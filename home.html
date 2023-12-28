@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Roy Mathew's Website</title>
+        <script>
+            class Task {
+                constructor(taskName) {
+                    this.taskName = taskName;
+                    this.completed = false;
+                }
+            }
+
+            currIndex = 0;
+            let tasks = []
+
+            function setTODOTask() {
+                const currTask = tasks[currIndex]
+                console.log(currTask)
+
+                const taskName = document.getElementById("taskName");
+                taskName.innerHTML = "<u>Current Task:</u> " + currTask.taskName
+
+                const status = document.getElementById("status");
+                if (currTask.completed) {
+                    status.innerHTML = '<p style="color: green;">Status: Done &#9989;</p>'
+                } else {
+                    status.innerHTML = '<p style="color: red;">Status: TBD &#10060;</p>'
+                }
+            }
+
+            function loadText() {
+                let todoText = document.getElementById("fieldId").value;
+                todoText = todoText.replace(/^\s*[\r\n]/gm, '');  // remove empty lines
+
+                let lines = todoText.split('\n');
+                console.log(lines)
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const taskName = line.substring(2);
+                    const currTask = new Task(taskName)
+                    tasks.push(currTask)
+                }
+                console.log(tasks)
+
+                setTODOTask()
+
+                const textInput = document.getElementById("textInput");
+                textInput.style.display = "none";
+
+                const todoId = document.getElementById("todoId");
+                todoId.style.display = "block";
+            }
+
+            function moveTasksForward() {
+                currIndex = Math.min(tasks.length - 1, currIndex + 1)
+                setTODOTask();
+            }
+
+            function moveTasksBackward() {
+                currIndex = Math.max(0, currIndex - 1)
+                setTODOTask();
+            }
+
+            function swapCompleteness() {
+                const currTask = tasks[currIndex]
+                currTask.completed = !currTask.completed
+                setTODOTask();
+            }
+
+        </script>
+    </head>
+    <body>
+        <div id="todoId" style="display: none;">
+            <h2 id="taskName"><u>Current Task:</u> TBD</h2>
+            <p id="status"></p>
+            <div>
+                <button id="prevButton" onclick="moveTasksBackward()">Prev</button>
+                <button id="doneButton" onclick="swapCompleteness()">Done</button>
+                <button id="nextButton" onclick="moveTasksForward()">Next</button>
+            </div>
+        </div>
+        <div id="textInput">
+            <textarea name="fieldName" id="fieldId" rows="10" cols="50"></textarea>
+            <br/>
+            <button id="loadTODOButton" onclick="loadText()">Load TODOs</button>
+        </div>
+    </body>
+</html>
