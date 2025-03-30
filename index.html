@@ -1,88 +1,385 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Roy Mathew's Website</title>
-        <script>
-            class Task {
-                constructor(taskName) {
-                    this.taskName = taskName;
-                    this.completed = false;
-                }
-            }
-
-            currIndex = 0;
-            let tasks = []
-
-            function setTODOTask() {
-                const currTask = tasks[currIndex]
-                console.log(currTask)
-
-                const taskName = document.getElementById("taskName");
-                taskName.innerHTML = "<u>Current Task:</u> " + currTask.taskName
-
-                const status = document.getElementById("status");
-                if (currTask.completed) {
-                    status.innerHTML = '<p style="color: green;">Status: Done &#9989;</p>'
-                } else {
-                    status.innerHTML = '<p style="color: red;">Status: TBD &#10060;</p>'
-                }
-            }
-
-            function loadText() {
-                let todoText = document.getElementById("fieldId").value;
-                todoText = todoText.replace(/^\s*[\r\n]/gm, '');  // remove empty lines
-
-                let lines = todoText.split('\n');
-                console.log(lines)
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const taskName = line.substring(2);
-                    const currTask = new Task(taskName)
-                    tasks.push(currTask)
-                }
-                console.log(tasks)
-
-                setTODOTask()
-
-                const textInput = document.getElementById("textInput");
-                textInput.style.display = "none";
-
-                const todoId = document.getElementById("todoId");
-                todoId.style.display = "block";
-            }
-
-            function moveTasksForward() {
-                currIndex = Math.min(tasks.length - 1, currIndex + 1)
-                setTODOTask();
-            }
-
-            function moveTasksBackward() {
-                currIndex = Math.max(0, currIndex - 1)
-                setTODOTask();
-            }
-
-            function swapCompleteness() {
-                const currTask = tasks[currIndex]
-                currTask.completed = !currTask.completed
-                setTODOTask();
-            }
-
-        </script>
-    </head>
-    <body>
-        <div id="todoId" style="display: none;">
-            <h2 id="taskName"><u>Current Task:</u> TBD</h2>
-            <p id="status"></p>
-            <div>
-                <button id="prevButton" onclick="moveTasksBackward()">Prev</button>
-                <button id="doneButton" onclick="swapCompleteness()">Done</button>
-                <button id="nextButton" onclick="moveTasksForward()">Next</button>
-            </div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Execution App</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      background-color: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .app-card {
+      width: 100%;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    
+    .app-content {
+      padding: 1.5rem;
+    }
+    
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: #1f2937;
+    }
+    
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .input-label {
+      font-size: 0.875rem;
+      color: #4b5563;
+      margin-bottom: 0.5rem;
+    }
+    
+    textarea {
+      width: 100%;
+      height: 16rem;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+    
+    button {
+      width: 100%;
+      padding: 0.625rem 1.25rem;
+      border: none;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    button:focus {
+      outline: none;
+    }
+    
+    .btn-blue {
+      background-color: #2563eb;
+      color: white;
+    }
+    
+    .btn-blue:hover {
+      background-color: #1d4ed8;
+    }
+    
+    .btn-green {
+      background-color: #16a34a;
+      color: white;
+    }
+    
+    .btn-green:hover {
+      background-color: #15803d;
+    }
+    
+    .btn-green:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .btn-red {
+      background-color: #dc2626;
+      color: white;
+    }
+    
+    .btn-red:hover {
+      background-color: #b91c1c;
+    }
+    
+    .task-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
+    .task-display {
+      background-color: #f9fafb;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .task-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+    
+    .task-text {
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: #1f2937;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .completion-message {
+      text-align: center;
+      padding: 0.5rem;
+      background-color: #ecfdf5;
+      color: #065f46;
+      border-radius: 0.375rem;
+      margin-top: 1rem;
+    }
+    
+    .progress-container {
+      width: 100%;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .progress-bar-bg {
+      height: 0.5rem;
+      width: 100%;
+      background-color: #e5e7eb;
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background-color: #2563eb;
+      border-radius: 9999px;
+      transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+      text-align: center;
+      font-size: 0.875rem;
+      color: #4b5563;
+      margin-top: 0.5rem;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .attribution {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="app-card">
+      <div class="app-content">
+        <h1>Task Execution App</h1>
+        
+        <div id="inputSection" class="input-section">
+          <p class="input-label">Enter your tasks below (one per line):</p>
+          <textarea id="taskInput" placeholder="Task 1&#10;Task 2&#10;Task 3"></textarea>
+          <button id="confirmButton" class="btn-blue">Confirm Tasks</button>
         </div>
-        <div id="textInput">
-            <textarea name="fieldName" id="fieldId" rows="10" cols="50"></textarea>
-            <br/>
-            <button id="loadTODOButton" onclick="loadText()">Load TODOs</button>
+        
+        <div id="taskSection" class="task-section hidden">
+          <div class="task-display">
+            <p id="taskLabel" class="task-label">Current Task (1/0):</p>
+            <p id="currentTask" class="task-text"></p>
+          </div>
+          
+          <div class="button-group">
+            <button id="resetButton" class="btn-red">Reset</button>
+            <button id="nextButton" class="btn-green">Next Task</button>
+          </div>
+          
+          <div id="completionMessage" class="completion-message hidden">
+            🎉 You've completed all your tasks!
+          </div>
         </div>
-    </body>
+      </div>
+    </div>
+    
+    <div id="progressContainer" class="progress-container hidden">
+      <div class="progress-bar-bg">
+        <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+      </div>
+      <p id="progressText" class="progress-text">Progress: 0 of 0 tasks</p>
+    </div>
+    
+    <p class="attribution">Developed by Anthropic Claude 3.7 Sonnet</p>
+  </div>
+
+  <script>
+    // DOM Elements
+    const inputSection = document.getElementById('inputSection');
+    const taskSection = document.getElementById('taskSection');
+    const taskInput = document.getElementById('taskInput');
+    const confirmButton = document.getElementById('confirmButton');
+    const taskLabel = document.getElementById('taskLabel');
+    const currentTask = document.getElementById('currentTask');
+    const nextButton = document.getElementById('nextButton');
+    const resetButton = document.getElementById('resetButton');
+    const completionMessage = document.getElementById('completionMessage');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    // App State
+    let tasks = [];
+    let currentTaskIndex = 0;
+    let isTaskListConfirmed = false;
+    
+    // Load saved state from localStorage
+    function loadSavedState() {
+      const savedTasks = localStorage.getItem('tasks');
+      const savedCurrentTaskIndex = localStorage.getItem('currentTaskIndex');
+      const savedIsTaskListConfirmed = localStorage.getItem('isTaskListConfirmed');
+      
+      if (savedTasks) {
+        tasks = JSON.parse(savedTasks);
+      }
+      
+      if (savedCurrentTaskIndex) {
+        currentTaskIndex = parseInt(savedCurrentTaskIndex, 10);
+      }
+      
+      if (savedIsTaskListConfirmed && JSON.parse(savedIsTaskListConfirmed)) {
+        isTaskListConfirmed = true;
+        showTaskView();
+        updateTaskDisplay();
+      }
+    }
+    
+    // Save state to localStorage
+    function saveState() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+      localStorage.setItem('currentTaskIndex', currentTaskIndex.toString());
+      localStorage.setItem('isTaskListConfirmed', JSON.stringify(isTaskListConfirmed));
+    }
+    
+    // Handle confirming tasks
+    function handleConfirmTasks() {
+      if (taskInput.value.trim() === '') return;
+      
+      tasks = taskInput.value
+        .split('\n')
+        .map(task => task.trim())
+        .filter(task => task !== '');
+      
+      currentTaskIndex = 0;
+      isTaskListConfirmed = true;
+      
+      showTaskView();
+      updateTaskDisplay();
+      saveState();
+    }
+    
+    // Handle navigating to the next task
+    function handleNextTask() {
+      if (currentTaskIndex < tasks.length - 1) {
+        currentTaskIndex++;
+        updateTaskDisplay();
+        saveState();
+      } else if (currentTaskIndex === tasks.length - 1) {
+        // Show completion message when "Next" is clicked on the final task
+        completionMessage.classList.remove('hidden');
+      }
+    }
+    
+    // Handle resetting the app
+    function handleReset() {
+      taskInput.value = '';
+      tasks = [];
+      currentTaskIndex = 0;
+      isTaskListConfirmed = false;
+      
+      showInputView();
+      saveState();
+    }
+    
+    // Show the task input view
+    function showInputView() {
+      inputSection.classList.remove('hidden');
+      taskSection.classList.add('hidden');
+      progressContainer.classList.add('hidden');
+    }
+    
+    // Show the task execution view
+    function showTaskView() {
+      inputSection.classList.add('hidden');
+      taskSection.classList.remove('hidden');
+      progressContainer.classList.remove('hidden');
+    }
+    
+    // Update the task display
+    function updateTaskDisplay() {
+      if (tasks.length === 0) return;
+      
+      taskLabel.textContent = `Current Task (${currentTaskIndex + 1}/${tasks.length}):`;
+      currentTask.textContent = tasks[currentTaskIndex];
+      
+      // Update progress bar
+      const progressPercent = ((currentTaskIndex + 1) / tasks.length) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+      progressText.textContent = `Progress: ${currentTaskIndex + 1} of ${tasks.length} tasks`;
+      
+      // Hide completion message when updating task display
+      completionMessage.classList.add('hidden');
+      
+      // Enable/disable next button based on current task index
+      if (currentTaskIndex === tasks.length - 1) {
+        // Don't disable the next button on the last task anymore
+        // It will be used to show the completion message
+        nextButton.disabled = false;
+      } else {
+        completionMessage.classList.add('hidden');
+      }
+    }
+    
+    // Event Listeners
+    confirmButton.addEventListener('click', handleConfirmTasks);
+    nextButton.addEventListener('click', handleNextTask);
+    resetButton.addEventListener('click', handleReset);
+    
+    // Initialize the app
+    loadSavedState();
+  </script>
+</body>
 </html>
