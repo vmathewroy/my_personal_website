@@ -1,10 +1,14 @@
 <!DOCTYPE html>
+<!-- Document type declaration for HTML5 -->
 <html lang="en">
+  <!-- Root element with language attribute for accessibility -->
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Execution App</title>
+  <!-- Head section containing meta tags, title, and styles -->
+  <meta charset="UTF-8">  <!-- Character encoding for the document -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <!-- Ensure proper scaling on mobile devices -->
+  <title>Task Execution App</title>  <!-- Title displayed in browser tab -->
   <style>
+    /* Global reset and box-sizing for consistency */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -12,6 +16,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
+    /* Body styles: background, centering, and padding */
     body {
       background-color: #f3f4f6;
       min-height: 100vh;
@@ -21,6 +26,7 @@
       padding: 1rem;
     }
     
+    /* Container to restrict width and center content */
     .container {
       width: 100%;
       max-width: 500px;
@@ -29,6 +35,7 @@
       align-items: center;
     }
     
+    /* Card element wrapper for the app UI */
     .app-card {
       width: 100%;
       background-color: white;
@@ -38,10 +45,12 @@
       margin-bottom: 1rem;
     }
     
+    /* Padding inside the card for content spacing */
     .app-content {
       padding: 1.5rem;
     }
     
+    /* Main heading styling */
     h1 {
       text-align: center;
       font-size: 1.5rem;
@@ -50,18 +59,21 @@
       color: #1f2937;
     }
     
+    /* Section for task input fields */
     .input-section {
       display: flex;
       flex-direction: column;
       gap: 1rem;
     }
     
+    /* Label above the textarea */
     .input-label {
       font-size: 0.875rem;
       color: #4b5563;
       margin-bottom: 0.5rem;
     }
     
+    /* Textarea for entering tasks: size, border, and resize behavior */
     textarea {
       width: 100%;
       height: 16rem;
@@ -72,12 +84,14 @@
       resize: vertical;
     }
     
+    /* Focus state for textarea */
     textarea:focus {
       outline: none;
       border-color: #3b82f6;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
     }
     
+    /* Base button styles: size, padding, border, and transitions */
     button {
       width: 100%;
       padding: 0.625rem 1.25rem;
@@ -88,48 +102,58 @@
       transition: background-color 0.2s;
     }
     
+    /* Remove default focus outline */
     button:focus {
       outline: none;
     }
     
+    /* Blue button variant for confirming */
     .btn-blue {
       background-color: #2563eb;
       color: white;
     }
     
+    /* Blue button hover state */
     .btn-blue:hover {
       background-color: #1d4ed8;
     }
     
+    /* Green button variant for next task */
     .btn-green {
       background-color: #16a34a;
       color: white;
     }
     
+    /* Green button hover state */
     .btn-green:hover {
       background-color: #15803d;
     }
     
+    /* Disabled state for green button */
     .btn-green:disabled {
       background-color: #9ca3af;
       cursor: not-allowed;
     }
     
+    /* Red button variant for reset action */
     .btn-red {
       background-color: #dc2626;
       color: white;
     }
     
+    /* Red button hover state */
     .btn-red:hover {
       background-color: #b91c1c;
     }
     
+    /* Section that displays the current task and controls */
     .task-section {
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
     }
     
+    /* Styling for the task display card */
     .task-display {
       background-color: #f9fafb;
       padding: 1.5rem;
@@ -137,23 +161,27 @@
       border: 1px solid #e5e7eb;
     }
     
+    /* Label for the current task indicator */
     .task-label {
       font-size: 0.75rem;
       color: #6b7280;
       margin-bottom: 0.25rem;
     }
     
+    /* Styling for the current task text */
     .task-text {
       font-size: 1.25rem;
       font-weight: 500;
       color: #1f2937;
     }
     
+    /* Container for the reset and next buttons */
     .button-group {
       display: flex;
       gap: 1rem;
     }
     
+    /* Message displayed upon task completion */
     .completion-message {
       text-align: center;
       padding: 0.5rem;
@@ -163,6 +191,7 @@
       margin-top: 1rem;
     }
     
+    /* Container for the progress bar */
     .progress-container {
       width: 100%;
       background-color: white;
@@ -172,6 +201,7 @@
       margin-top: 1rem;
     }
     
+    /* Background of the progress bar track */
     .progress-bar-bg {
       height: 0.5rem;
       width: 100%;
@@ -180,6 +210,7 @@
       overflow: hidden;
     }
     
+    /* Fill of the progress bar */
     .progress-bar {
       height: 100%;
       background-color: #2563eb;
@@ -187,6 +218,7 @@
       transition: width 0.3s ease;
     }
     
+    /* Text showing numeric progress */
     .progress-text {
       text-align: center;
       font-size: 0.875rem;
@@ -194,10 +226,12 @@
       margin-top: 0.5rem;
     }
     
+    /* Utility class to hide elements */
     .hidden {
       display: none;
     }
     
+    /* Attribution text at bottom of app */
     .attribution {
       text-align: center;
       font-size: 0.75rem;
@@ -208,27 +242,32 @@
 </head>
 <body>
   <div class="container">
+    <!-- App card wrapper -->
     <div class="app-card">
       <div class="app-content">
         <h1>Task Execution App</h1>
         
+        <!-- Section where user inputs tasks -->
         <div id="inputSection" class="input-section">
           <p class="input-label">Enter your tasks below (one per line):</p>
           <textarea id="taskInput" placeholder="Task 1&#10;Task 2&#10;Task 3"></textarea>
           <button id="confirmButton" class="btn-blue">Confirm Tasks</button>
         </div>
         
+        <!-- Section that shows current task and controls, hidden by default -->
         <div id="taskSection" class="task-section hidden">
           <div class="task-display">
             <p id="taskLabel" class="task-label">Current Task (1/0):</p>
             <p id="currentTask" class="task-text"></p>
           </div>
           
+          <!-- Buttons to reset or move to next task -->
           <div class="button-group">
             <button id="resetButton" class="btn-red">Reset</button>
             <button id="nextButton" class="btn-green">Next Task</button>
           </div>
           
+          <!-- Message shown when all tasks are completed, hidden by default -->
           <div id="completionMessage" class="completion-message hidden">
             🎉 You've completed all your tasks!
           </div>
@@ -236,6 +275,7 @@
       </div>
     </div>
     
+    <!-- Progress bar container, hidden by default -->
     <div id="progressContainer" class="progress-container hidden">
       <div class="progress-bar-bg">
         <div id="progressBar" class="progress-bar" style="width: 0%"></div>
@@ -243,11 +283,12 @@
       <p id="progressText" class="progress-text">Progress: 0 of 0 tasks</p>
     </div>
     
+    <!-- Attribution text -->
     <p class="attribution">Developed by Anthropic Claude 3.7 Sonnet</p>
   </div>
 
   <script>
-    // DOM Elements
+    // Grab DOM elements by their IDs for later use
     const inputSection = document.getElementById('inputSection');
     const taskSection = document.getElementById('taskSection');
     const taskInput = document.getElementById('taskInput');
@@ -261,12 +302,12 @@
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
     
-    // App State
+    // Variables to hold application state
     let tasks = [];
     let currentTaskIndex = 0;
     let isTaskListConfirmed = false;
     
-    // Load saved state from localStorage
+    // Function to load saved tasks and state from localStorage
     function loadSavedState() {
       const savedTasks = localStorage.getItem('tasks');
       const savedCurrentTaskIndex = localStorage.getItem('currentTaskIndex');
@@ -282,103 +323,97 @@
       
       if (savedIsTaskListConfirmed && JSON.parse(savedIsTaskListConfirmed)) {
         isTaskListConfirmed = true;
-        showTaskView();
-        updateTaskDisplay();
+        showTaskView();  // Reveal the task execution UI
+        updateTaskDisplay();  // Update the display for the current task
       }
     }
     
-    // Save state to localStorage
+    // Function to save the current state to localStorage
     function saveState() {
       localStorage.setItem('tasks', JSON.stringify(tasks));
       localStorage.setItem('currentTaskIndex', currentTaskIndex.toString());
       localStorage.setItem('isTaskListConfirmed', JSON.stringify(isTaskListConfirmed));
     }
     
-    // Handle confirming tasks
+    // Handler for confirming the list of tasks entered by the user
     function handleConfirmTasks() {
-      if (taskInput.value.trim() === '') return;
+      if (taskInput.value.trim() === '') return;  // Do nothing if input is empty
       
       tasks = taskInput.value
-        .split('\n')
-        .map(task => task.trim())
-        .filter(task => task !== '');
+        .split('\n')  /* Split input by newline into an array */
+        .map(task => task.trim())  /* Trim whitespace from each task */
+        .filter(task => task !== '');  /* Remove empty lines */
       
       currentTaskIndex = 0;
       isTaskListConfirmed = true;
       
-      showTaskView();
-      updateTaskDisplay();
-      saveState();
+      showTaskView();          // Switch to the task execution UI
+      updateTaskDisplay();     // Display the first task
+      saveState();             // Persist the state
     }
     
-    // Handle navigating to the next task
+    // Handler for moving to the next task
     function handleNextTask() {
       if (currentTaskIndex < tasks.length - 1) {
         currentTaskIndex++;
-        updateTaskDisplay();
-        saveState();
+        updateTaskDisplay();   // Update UI for the new current task
+        saveState();           // Persist the new index
       } else if (currentTaskIndex === tasks.length - 1) {
-        // Show completion message when "Next" is clicked on the final task
+        // If on the final task, show the completion message
         completionMessage.classList.remove('hidden');
       }
     }
     
-    // Handle resetting the app
+    // Handler for resetting the app back to initial state
     function handleReset() {
-      taskInput.value = '';
+      taskInput.value = '';  // Clear textarea
       tasks = [];
       currentTaskIndex = 0;
       isTaskListConfirmed = false;
       
-      showInputView();
-      saveState();
+      showInputView();       // Show the task input UI
+      saveState();           // Persist cleared state
     }
     
-    // Show the task input view
+    // Show the task input section and hide other sections
     function showInputView() {
       inputSection.classList.remove('hidden');
       taskSection.classList.add('hidden');
       progressContainer.classList.add('hidden');
     }
     
-    // Show the task execution view
+    // Show the task execution section and progress bar
     function showTaskView() {
       inputSection.classList.add('hidden');
       taskSection.classList.remove('hidden');
       progressContainer.classList.remove('hidden');
     }
     
-    // Update the task display
+    // Update the displayed task, progress bar, and labels
     function updateTaskDisplay() {
-      if (tasks.length === 0) return;
+      if (tasks.length === 0) return;  // Do nothing if no tasks
       
       taskLabel.textContent = `Current Task (${currentTaskIndex + 1}/${tasks.length}):`;
       currentTask.textContent = tasks[currentTaskIndex];
       
-      // Update progress bar
+      // Calculate and set width of progress bar
       const progressPercent = ((currentTaskIndex + 1) / tasks.length) * 100;
       progressBar.style.width = `${progressPercent}%`;
       progressText.textContent = `Progress: ${currentTaskIndex + 1} of ${tasks.length} tasks`;
       
-      // Hide completion message when updating task display
+      // Hide the completion message whenever tasks are updated
       completionMessage.classList.add('hidden');
       
-      // Enable/disable next button based on current task index
-      if (currentTaskIndex === tasks.length - 1) {
-        // Don't disable the next button on the last task anymore
-        // It will be used to show the completion message
-        nextButton.disabled = false;
-      } else {
-        completionMessage.classList.add('hidden');
-      }
+      // Ensure next button is enabled so users can always click it
+      nextButton.disabled = false;
     }
     
-    // Event Listeners
+    // Attach click event listeners to the buttons
     confirmButton.addEventListener('click', handleConfirmTasks);
     nextButton.addEventListener('click', handleNextTask);
     resetButton.addEventListener('click', handleReset);
     
-    // Initialize the app
+    // When the page loads, restore any saved state
     loadSavedState();
   </script>
 </body>
