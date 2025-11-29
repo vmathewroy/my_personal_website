@@ -1,0 +1,420 @@
+/* Modern Professional Theme - Base Styles */
+:root {
+    --primary-bg: #0f172a;
+    --secondary-bg: #1e293b;
+    --card-bg: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-light: #cbd5e1;
+    --accent-blue: #3b82f6;
+    --accent-purple: #8b5cf6;
+    --border-color: #e2e8f0;
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #fafaf9;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Responsive Container */
+body > * {
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Headings */
+h1 {
+    font-size: 2.5rem;
+    margin: 0 0 10px 0;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+}
+
+h2 {
+    font-size: 1.25rem;
+    margin: 0 0 20px 0;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Section Cards */
+#today_section,
+#add_habit_section {
+    background: var(--card-bg);
+    padding: 40px;
+    margin-bottom: 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Date Picker Container */
+#today_section > div:first-of-type {
+    background: #f8fafc;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+#today_section > div:first-of-type label {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Today's Logged Points List */
+#logged_points_list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+#logged_points_list > li {
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    padding: 20px 24px;
+    background: #f8fafc;
+    border-left: 4px solid #3b82f6;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+#logged_points_list > li:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-md);
+}
+
+#logged_points_list > li:first-child {
+    margin-top: 0;
+}
+
+#logged_points_list > li:last-child {
+    margin-bottom: 0;
+}
+
+/* Nested habits list */
+#logged_points_list ul {
+    list-style: none;
+    font-weight: 400;
+    margin-top: 16px;
+    padding-left: 0;
+}
+
+#logged_points_list ul li {
+    margin: 10px 0;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-left: 3px solid currentColor;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+}
+
+#logged_points_list ul li:hover {
+    background: #f1f5f9;
+    transform: translateX(4px);
+    color: var(--text-primary);
+}
+
+#logged_points_list ul li:before {
+    content: "•";
+    margin-right: 8px;
+    opacity: 0.5;
+    font-weight: bold;
+}
+
+/* Form Elements Container */
+#add_habit_section > div {
+    margin-bottom: 24px;
+}
+
+/* Labels */
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+/* Select Dropdowns and Date Picker */
+select,
+input[type="date"] {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    padding: 14px 18px;
+    width: 100%;
+    max-width: 100%;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 18px;
+    padding-right: 45px;
+}
+
+input[type="date"] {
+    flex: 1;
+    max-width: 280px;
+}
+
+select:hover,
+input[type="date"]:hover {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+select:focus,
+input[type="date"]:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Button Styles */
+button {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 16px 32px;
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: none;
+    letter-spacing: 0.3px;
+    box-shadow: var(--shadow-md);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, #5568d3 0%, #6941a0 100%);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+button:disabled {
+    background: linear-gradient(135deg, #94a3b8 0%, #94a3b8 100%);
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: none;
+}
+
+button:disabled:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+}
+
+/* Hidden containers animations */
+#habit_selection_container,
+#record_button_container {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Footer Disclaimer */
+#disclaimer {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+#disclaimer p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* Mobile Optimization */
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.1rem;
+    }
+
+    #today_section,
+    #add_habit_section {
+        padding: 24px 20px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+    }
+
+    #today_section > div:first-of-type {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    input[type="date"] {
+        max-width: 100%;
+    }
+
+    select,
+    button,
+    input[type="date"] {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    #logged_points_list > li {
+        padding: 16px 18px;
+        font-size: 0.95rem;
+    }
+
+    #logged_points_list ul li {
+        padding: 10px 14px;
+        font-size: 0.85rem;
+    }
+
+    button {
+        padding: 14px 24px;
+    }
+}
+
+/* Tablet Optimization */
+@media (min-width: 769px) and (max-width: 1024px) {
+    body {
+        padding: 16px;
+    }
+
+    #today_section,
+    #add_habit_section {
+        padding: 32px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    #add_habit_section,
+    #disclaimer {
+        display: none;
+    }
+
+    #today_section {
+        border: 1px solid #e2e8f0;
+        box-shadow: none;
+        page-break-inside: avoid;
+    }
+
+    #logged_points_list > li {
+        page-break-inside: avoid;
+    }
+}
+
+/* Dark mode support (optional, respects system preferences) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --card-bg: #1e293b;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --border-color: #334155;
+    }
+
+    body {
+        background: #0f172a;
+    }
+
+    #today_section,
+    #add_habit_section {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #today_section > div:first-of-type {
+        background: #0f172a;
+        border-color: var(--border-color);
+    }
+
+    #logged_points_list > li {
+        background: #0f172a;
+        color: var(--text-primary);
+    }
+
+    #logged_points_list ul li {
+        background: #1e293b;
+        color: var(--text-secondary);
+    }
+
+    #logged_points_list ul li:hover {
+        background: #334155;
+        color: var(--text-primary);
+    }
+
+    select,
+    input[type="date"] {
+        background-color: #0f172a;
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
+
+    select {
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    }
+}
