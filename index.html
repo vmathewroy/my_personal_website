@@ -9,21 +9,6 @@
 </head>
 
 <body>
-<div id="today_section">
-    <h1>Habit Log</h1>
-    
-    <!-- Date Selector -->
-    <div style="margin-bottom: 20px;">
-        <label for="date_picker">Select Date:</label>
-        <input type="date" id="date_picker" />
-    </div>
-    
-    <h2 id="points_heading">Today's Logged Points</h2>
-    <ul id="logged_points_list">
-        <li>Loading data...</li>
-    </ul>
-</div>
-
 <div id="add_habit_section">
     <h2>Add New Habit</h2>
     
@@ -49,6 +34,24 @@
     </div>
 </div>
 
+<div id="today_section">
+    <!-- Date Selector -->
+    <div style="margin-bottom: 20px;">
+        <label for="date_picker">Select Date:</label>
+        <input type="date" id="date_picker" />
+    </div>
+    
+    <h2 id="points_heading">Today's Logged Points</h2>
+    
+    <div id="chart_container">
+        <canvas id="points_chart"></canvas>
+    </div>
+    
+    <ul id="logged_points_list">
+        <li>Loading data...</li>
+    </ul>
+</div>
+
 <footer id="disclaimer">
     <button id="reconfigure_button" onclick="reconfigureApp()" style="margin-bottom: 10px; padding: 4px 12px !important; cursor: pointer; background: #f5f5f5 !important; color: #666 !important; border: 1px solid #ddd !important; border-radius: 3px !important; font-size: 0.85em !important; font-weight: 400 !important; width: auto !important; box-shadow: none !important;">
         Redo Setup
@@ -56,6 +59,8 @@
     <p>Disclaimer: This webapp was coded with Kilo-Code and Anthropic Claude Sonnet 4.5</p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script type="module" src="app.js"></script>
 
 </body>

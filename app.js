@@ -130,6 +130,9 @@ const state = {
     selectedDate: new Date().toLocaleDateString('en-CA') // Default to today
 };
 
+// Chart instance
+let pointsChart = null;
+
 /**
  * Get color for a category ID (assigns consistently based on category ID)
  * Uses a simple hash to ensure the same category always gets the same color
@@ -148,6 +151,123 @@ function getCategoryColor(categoryId) {
         state.categoryColors.set(categoryId, CATEGORY_COLORS[colorIndex]);
     }
     return state.categoryColors.get(categoryId);
+}
+
+/**
+ * Render or update the bar chart showing points per category
+ * @param {Object} categoryPoints - Object mapping category IDs to total points
+ */
+function renderPointsChart(categoryPoints) {
+    const canvas = document.getElementById('points_chart');
+    
+    if (!canvas) {
+        console.error('Canvas element not found');
+        return;
+    }
+    
+    // Get all categories and their points (including zero points)
+    const categoryIds = Object.keys(state.categories);
+    const labels = [];
+    const data = [];
+    const backgroundColors = [];
+    const borderColors = [];
+    
+    categoryIds.forEach(categoryId => {
+        const categoryName = state.categories[categoryId];
+        const points = categoryPoints[categoryId] || 0; // Default to 0 if no points
+        const color = getCategoryColor(categoryId);
+        
+        labels.push(categoryName);
+        data.push(points);
+        backgroundColors.push(color.bg);
+        borderColors.push(color.border);
+    });
+    
+    // Destroy existing chart if it exists
+    if (pointsChart) {
+        pointsChart.destroy();
+    }
+    
+    // Create new chart
+    const ctx = canvas.getContext('2d');
+    pointsChart = new Chart(ctx, {
+        type: 'bar',
+        plugins: [ChartDataLabels],
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Points',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grace: '10%',
+                    ticks: {
+                        stepSize: 1,
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 12
+                        },
+                        maxRotation: 90,
+                        minRotation: 45
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            const points = context.parsed.y;
+                            return points === 1 ? '1 point' : `${points} points`;
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: function(value) {
+                        return value;
+                    },
+                    font: {
+                        weight: 'bold',
+                        size: 12
+                    },
+                    color: '#1e293b'
+                }
+            }
+        }
+    });
 }
 
 // Initialize the Supabase Client (will be set after config is loaded)
@@ -350,12 +470,22 @@ async function fetchAndDisplayLoggedPoints(date) {
             categoryItem.appendChild(habitsList);
             listElement.appendChild(categoryItem);
         }
+        
+        // Render the chart with category points
+        const categoryPoints = {};
+        for (const categoryId in habitsByCategory) {
+            categoryPoints[categoryId] = habitsByCategory[categoryId].totalPoints;
+        }
+        renderPointsChart(categoryPoints);
     } else {
         if (date === today) {
             listElement.innerHTML = '<li>No points earned today.</li>';
         } else {
             listElement.innerHTML = `<li>No points earned on ${dateString}.</li>`;
         }
+        
+        // Render chart with all categories at 0 points
+        renderPointsChart({});
     }
 }
 
