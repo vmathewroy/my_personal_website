@@ -1,17 +1,17 @@
-/* Modern Professional Theme - Base Styles */
+/* Modern Professional Theme - Dark Mode Base Styles */
 :root {
-    --primary-bg: #0f172a;
-    --secondary-bg: #1e293b;
-    --card-bg: #ffffff;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --text-light: #cbd5e1;
+    --primary-bg: #000000;
+    --secondary-bg: #0a0a0a;
+    --card-bg: #111111;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --text-light: #e0e0e0;
     --accent-blue: #3b82f6;
     --accent-purple: #8b5cf6;
-    --border-color: #e2e8f0;
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --border-color: #2a2a2a;
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.6);
 }
 
 * {
@@ -20,7 +20,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: #fafaf9;
+    background: #000000;
     color: var(--text-primary);
     margin: 0;
     padding: 20px;
@@ -61,12 +61,12 @@ h2 {
     border-radius: 16px;
     box-shadow: var(--shadow-lg);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Date Picker Container */
 #today_section > div:first-of-type {
-    background: #f8fafc;
+    background: #000000;
     padding: 16px 20px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
@@ -95,12 +95,13 @@ h2 {
     font-weight: 600;
     margin: 0 0 16px 0;
     padding: 20px 24px;
-    background: #f8fafc;
+    background: #0a0a0a;
     border-left: 4px solid #3b82f6;
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
     font-size: 1rem;
+    color: var(--text-primary);
 }
 
 #logged_points_list > li:hover {
@@ -127,16 +128,16 @@ h2 {
 #logged_points_list ul li {
     margin: 10px 0;
     padding: 12px 16px;
-    background: #ffffff;
+    background: #1a1a1a;
     border-left: 3px solid currentColor;
     font-size: 0.9rem;
     border-radius: 8px;
     transition: all 0.2s ease;
-    color: var(--text-secondary);
+    color: var(--text-light);
 }
 
 #logged_points_list ul li:hover {
-    background: #f1f5f9;
+    background: #2a2a2a;
     transform: translateX(4px);
     color: var(--text-primary);
 }
@@ -152,7 +153,7 @@ h2 {
 #chart_container {
     margin-bottom: 32px;
     padding: 24px;
-    background: #ffffff;
+    background: #0a0a0a;
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
@@ -186,7 +187,7 @@ input[type="date"] {
     max-width: 100%;
     border: 2px solid var(--border-color);
     border-radius: 10px;
-    background-color: #ffffff;
+    background-color: #0a0a0a;
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -197,7 +198,7 @@ select {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right 14px center;
     background-size: 18px;
@@ -380,61 +381,5 @@ button:disabled:hover {
 
     #logged_points_list > li {
         page-break-inside: avoid;
-    }
-}
-
-/* Dark mode support (optional, respects system preferences) */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --card-bg: #1e293b;
-        --text-primary: #f1f5f9;
-        --text-secondary: #94a3b8;
-        --border-color: #334155;
-    }
-
-    body {
-        background: #0f172a;
-    }
-
-    #today_section,
-    #add_habit_section {
-        background: var(--card-bg);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    #today_section > div:first-of-type {
-        background: #0f172a;
-        border-color: var(--border-color);
-    }
-
-    #logged_points_list > li {
-        background: #0f172a;
-        color: var(--text-primary);
-    }
-
-    #logged_points_list ul li {
-        background: #1e293b;
-        color: var(--text-secondary);
-    }
-
-    #logged_points_list ul li:hover {
-        background: #334155;
-        color: var(--text-primary);
-    }
-
-    select,
-    input[type="date"] {
-        background-color: #0f172a;
-        color: var(--text-primary);
-        border-color: var(--border-color);
-    }
-
-    select {
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    }
-    
-    #chart_container {
-        background: #1e293b;
-        border-color: var(--border-color);
     }
 }

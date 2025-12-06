@@ -105,20 +105,20 @@ window.reconfigureApp = function() {
     }
 };
 
-// Color palette for categories (will cycle through these)
+// Color palette for categories (will cycle through these) - Dark theme optimized
 const CATEGORY_COLORS = [
-    { border: '#2196F3', bg: '#E3F2FD' },  // Blue
-    { border: '#4CAF50', bg: '#E8F5E9' },  // Green
-    { border: '#FF9800', bg: '#FFF3E0' },  // Orange
-    { border: '#9C27B0', bg: '#F3E5F5' },  // Purple
-    { border: '#F44336', bg: '#FFEBEE' },  // Red
-    { border: '#00BCD4', bg: '#E0F7FA' },  // Cyan
-    { border: '#FFEB3B', bg: '#FFFDE7' },  // Yellow
-    { border: '#E91E63', bg: '#FCE4EC' },  // Pink
-    { border: '#009688', bg: '#E0F2F1' },  // Teal
-    { border: '#FF5722', bg: '#FBE9E7' },  // Deep Orange
-    { border: '#673AB7', bg: '#EDE7F6' },  // Deep Purple
-    { border: '#8BC34A', bg: '#F1F8E9' }   // Light Green
+    { border: '#60a5fa', bg: '#1e3a5f' },  // Blue
+    { border: '#4ade80', bg: '#1a3d2e' },  // Green
+    { border: '#fb923c', bg: '#3d2817' },  // Orange
+    { border: '#c084fc', bg: '#3d2054' },  // Purple
+    { border: '#f87171', bg: '#3d1a1a' },  // Red
+    { border: '#22d3ee', bg: '#0f3d47' },  // Cyan
+    { border: '#fbbf24', bg: '#3d3410' },  // Yellow
+    { border: '#f472b6', bg: '#3d1a30' },  // Pink
+    { border: '#2dd4bf', bg: '#0f3d3a' },  // Teal
+    { border: '#fb7185', bg: '#3d1721' },  // Rose
+    { border: '#a78bfa', bg: '#2d1f54' },  // Violet
+    { border: '#86efac', bg: '#1a3d28' }   // Light Green
 ];
 
 // Application state
@@ -263,7 +263,7 @@ function renderPointsChart(categoryPoints) {
                         weight: 'bold',
                         size: 12
                     },
-                    color: '#1e293b'
+                    color: '#ffffff'
                 }
             }
         }
