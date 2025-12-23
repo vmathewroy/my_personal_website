@@ -70,17 +70,69 @@ h2 {
     padding: 16px 20px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    gap: 12px;
     margin-bottom: 32px;
 }
 
 #today_section > div:first-of-type label {
-    margin: 0;
+    display: block;
+    margin: 0 0 12px 0;
     font-size: 0.95rem;
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+/* Date Navigation Container */
+.date-navigation {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Date Navigation Buttons */
+.date-nav-button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a0a;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.date-nav-button:hover {
+    border-color: var(--accent-blue);
+    background: #1a1a1a;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+.date-nav-button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+.date-nav-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #0a0a0a;
+    transform: none;
+}
+
+.date-nav-button:disabled:hover {
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transform: none;
+}
+
+.date-nav-button svg {
+    width: 20px;
+    height: 20px;
 }
 
 /* Today's Logged Points List */
@@ -319,13 +371,22 @@ button:disabled:hover {
     }
 
     #today_section > div:first-of-type {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+        padding: 16px;
+    }
+
+    .date-navigation {
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
     input[type="date"] {
-        max-width: 100%;
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .date-nav-button {
+        width: 40px;
+        height: 40px;
     }
 
     select,

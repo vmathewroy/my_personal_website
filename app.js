@@ -360,6 +360,8 @@ async function loadCategories() {
  */
 function initializeDatePicker() {
     const datePicker = document.getElementById('date_picker');
+    const prevButton = document.getElementById('prev_date_button');
+    const nextButton = document.getElementById('next_date_button');
     
     // Set default value to today
     datePicker.value = state.selectedDate;
@@ -367,6 +369,24 @@ function initializeDatePicker() {
     // Add event listener for date changes
     datePicker.addEventListener('change', async function(event) {
         state.selectedDate = event.target.value;
+        await fetchAndDisplayLoggedPoints(state.selectedDate);
+    });
+    
+    // Add event listener for previous date button
+    prevButton.addEventListener('click', async function() {
+        const currentDate = new Date(state.selectedDate + 'T00:00:00');
+        currentDate.setDate(currentDate.getDate() - 1);
+        state.selectedDate = currentDate.toLocaleDateString('en-CA');
+        datePicker.value = state.selectedDate;
+        await fetchAndDisplayLoggedPoints(state.selectedDate);
+    });
+    
+    // Add event listener for next date button
+    nextButton.addEventListener('click', async function() {
+        const currentDate = new Date(state.selectedDate + 'T00:00:00');
+        currentDate.setDate(currentDate.getDate() + 1);
+        state.selectedDate = currentDate.toLocaleDateString('en-CA');
+        datePicker.value = state.selectedDate;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
     });
 }

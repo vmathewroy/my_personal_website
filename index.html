@@ -38,7 +38,19 @@
     <!-- Date Selector -->
     <div style="margin-bottom: 20px;">
         <label for="date_picker">Select Date:</label>
-        <input type="date" id="date_picker" />
+        <div class="date-navigation">
+            <button type="button" id="prev_date_button" class="date-nav-button" aria-label="Previous day">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <input type="date" id="date_picker" />
+            <button type="button" id="next_date_button" class="date-nav-button" aria-label="Next day">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </div>
     </div>
     
     <h2 id="points_heading">Today's Logged Points</h2>
