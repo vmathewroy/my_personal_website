@@ -130,8 +130,9 @@ const state = {
     selectedDate: new Date().toLocaleDateString('en-CA') // Default to today
 };
 
-// Chart instance
+// Chart instances
 let pointsChart = null;
+let progressChart = null;
 
 /**
  * Get color for a category ID (assigns consistently based on category ID)
@@ -296,6 +297,7 @@ async function checkIfUserIsLoggedIn() {
         await loadCategories() // Load categories for dropdowns
         initializeDatePicker() // Set up date picker
         await fetchAndDisplayLoggedPoints(state.selectedDate) // Display logged points for selected date
+        await fetchAndDisplayProgress(state.selectedDate) // Display 7-day progress
     } else {
         console.log("No user logged in")
         // Show a login prompt (simplified for this example)
@@ -370,6 +372,7 @@ function initializeDatePicker() {
     datePicker.addEventListener('change', async function(event) {
         state.selectedDate = event.target.value;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
+        await fetchAndDisplayProgress(state.selectedDate);
     });
     
     // Add event listener for previous date button
@@ -379,6 +382,7 @@ function initializeDatePicker() {
         state.selectedDate = currentDate.toLocaleDateString('en-CA');
         datePicker.value = state.selectedDate;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
+        await fetchAndDisplayProgress(state.selectedDate);
     });
     
     // Add event listener for next date button
@@ -388,6 +392,7 @@ function initializeDatePicker() {
         state.selectedDate = currentDate.toLocaleDateString('en-CA');
         datePicker.value = state.selectedDate;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
+        await fetchAndDisplayProgress(state.selectedDate);
     });
 }
 
@@ -507,6 +512,197 @@ async function fetchAndDisplayLoggedPoints(date) {
         // Render chart with all categories at 0 points
         renderPointsChart({});
     }
+}
+
+/**
+ * Fetch and display progress for the current month up to the previous day
+ */
+async function fetchAndDisplayProgress(currentDate) {
+    const progressSummary = document.getElementById('progress_summary');
+    
+    // Parse the current date
+    const currentDateObj = new Date(currentDate + 'T00:00:00');
+    
+    // Calculate the previous day (end date for progress)
+    const endDateObj = new Date(currentDateObj);
+    endDateObj.setDate(endDateObj.getDate() - 1);
+    const endDate = endDateObj.toLocaleDateString('en-CA');
+    
+    // Calculate the start date (first day of the current month)
+    const startDateObj = new Date(currentDateObj.getFullYear(), currentDateObj.getMonth(), 1);
+    const startDate = startDateObj.toLocaleDateString('en-CA');
+    
+    // Format month and year for display
+    const monthYearDisplay = currentDateObj.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+    });
+    
+    // Fetch habit log entries for the date range
+    const { data, error } = await supabase
+        .from(CONFIG.tables.habitLog)
+        .select(`
+            date,
+            habits (
+                default_points,
+                category
+            )
+        `)
+        .gte('date', startDate)
+        .lte('date', endDate);
+    
+    if (error) {
+        console.error('Error fetching progress data:', error);
+        progressSummary.innerHTML = `<p>Error loading progress: ${error.message}</p>`;
+        return;
+    }
+    
+    // Calculate total points and points per category
+    let totalPoints = 0;
+    const categoryPoints = {};
+    
+    if (data && data.length > 0) {
+        data.forEach(row => {
+            const points = row.habits.default_points;
+            const categoryId = row.habits.category;
+            
+            totalPoints += points;
+            
+            if (!categoryPoints[categoryId]) {
+                categoryPoints[categoryId] = 0;
+            }
+            categoryPoints[categoryId] += points;
+        });
+    }
+    
+    // Build the HTML for display
+    const pointWord = totalPoints === 1 ? 'point' : 'points';
+    let html = `
+        <p>Total Points Earned:</p>
+        <div class="total-points">${totalPoints}</div>
+        <p class="date-range">${monthYearDisplay} (up to previous day)</p>
+    `;
+    
+    progressSummary.innerHTML = html;
+    
+    // Render the horizontal bar chart
+    renderProgressChart(categoryPoints);
+}
+
+/**
+ * Render or update the horizontal bar chart showing progress by category
+ * @param {Object} categoryPoints - Object mapping category IDs to total points
+ */
+function renderProgressChart(categoryPoints) {
+    const canvas = document.getElementById('progress_chart');
+    
+    if (!canvas) {
+        console.error('Progress chart canvas element not found');
+        return;
+    }
+    
+    // Sort categories by points (descending)
+    const sortedCategories = Object.entries(categoryPoints).sort((a, b) => b[1] - a[1]);
+    
+    const labels = [];
+    const data = [];
+    const backgroundColors = [];
+    const borderColors = [];
+    
+    sortedCategories.forEach(([categoryId, points]) => {
+        const categoryName = state.categories[categoryId];
+        const color = getCategoryColor(categoryId);
+        
+        labels.push(categoryName);
+        data.push(points);
+        backgroundColors.push(color.bg);
+        borderColors.push(color.border);
+    });
+    
+    // Destroy existing chart if it exists
+    if (progressChart) {
+        progressChart.destroy();
+    }
+    
+    // Create new horizontal bar chart
+    const ctx = canvas.getContext('2d');
+    progressChart = new Chart(ctx, {
+        type: 'bar',
+        plugins: [ChartDataLabels],
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Points',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            indexAxis: 'y', // This makes it horizontal
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grace: '10%',
+                    ticks: {
+                        stepSize: 1,
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                y: {
+                    ticks: {
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            const points = context.parsed.x;
+                            return points === 1 ? '1 point' : `${points} points`;
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'right',
+                    formatter: function(value) {
+                        return value;
+                    },
+                    font: {
+                        weight: 'bold',
+                        size: 12
+                    },
+                    color: '#ffffff'
+                }
+            }
+        }
+    });
 }
 
 /**
@@ -635,6 +831,7 @@ async function onRecordHabitClicked() {
         
         // Refresh the logged points display for the selected date
         await fetchAndDisplayLoggedPoints(state.selectedDate);
+        await fetchAndDisplayProgress(state.selectedDate);
         
         // Reset the form
         document.getElementById('category_dropdown').value = '';
