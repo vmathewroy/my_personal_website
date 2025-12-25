@@ -808,8 +808,8 @@ async function onRecordHabitClicked() {
     recordButton.textContent = 'Recording...';
     
     try {
-        // Get today's date in the correct format
-        const localDate = new Date().toLocaleDateString('en-CA');
+        // Use the selected date instead of always using today
+        const localDate = state.selectedDate;
         
         // Insert the habit log entry
         const { data, error } = await supabase
