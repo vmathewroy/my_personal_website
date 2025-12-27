@@ -55,4 +55,8 @@ create table public.habit_log (
   constraint habit_log_pkey primary key (id),
   constraint habit_log_habit_fkey foreign KEY (habit) references habits (id) on update CASCADE on delete CASCADE
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_habit_log_date on public.habit_log using btree (date) TABLESPACE pg_default;
+
+create index IF not exists idx_habit_log_date_habit on public.habit_log using btree (date, habit) TABLESPACE pg_default;
 ```
