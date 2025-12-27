@@ -65,7 +65,8 @@ h2 {
 }
 
 /* Progress Section */
-#progress_section {
+#progress_section,
+#top_habits_section {
     background: var(--card-bg);
     padding: 40px;
     margin-bottom: 24px;
@@ -120,6 +121,70 @@ h2 {
 
 #progress_chart {
     max-height: 400px;
+}
+
+/* Top Habits Section */
+#top_habits_list {
+    background: #0a0a0a;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+#top_habits_list p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+#top_habits_list ol {
+    list-style: none;
+    counter-reset: habit-counter;
+    padding: 0;
+    margin: 0;
+}
+
+#top_habits_list li {
+    counter-increment: habit-counter;
+    margin: 12px 0;
+    padding: 16px 20px;
+    border-left: 4px solid;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    color: var(--text-light);
+}
+
+#top_habits_list li:hover {
+    transform: translateX(4px);
+    color: var(--text-primary);
+    filter: brightness(1.2);
+}
+
+#top_habits_list li:before {
+    content: counter(habit-counter) ".";
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--accent-purple);
+    margin-right: 12px;
+    min-width: 30px;
+}
+
+#top_habits_list .habit-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+#top_habits_list .habit-count {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent-blue);
+    margin-left: 16px;
 }
 
 /* Date Picker Container */

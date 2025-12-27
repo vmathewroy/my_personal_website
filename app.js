@@ -297,7 +297,8 @@ async function checkIfUserIsLoggedIn() {
         await loadCategories() // Load categories for dropdowns
         initializeDatePicker() // Set up date picker
         await fetchAndDisplayLoggedPoints(state.selectedDate) // Display logged points for selected date
-        await fetchAndDisplayProgress(state.selectedDate) // Display 7-day progress
+        await fetchAndDisplayProgress(state.selectedDate) // Display monthly progress
+        await fetchAndDisplayTopHabits(state.selectedDate) // Display top habits for the month
     } else {
         console.log("No user logged in")
         // Show a login prompt (simplified for this example)
@@ -374,6 +375,7 @@ function initializeDatePicker() {
         state.selectedDate = event.target.value;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
+        await fetchAndDisplayTopHabits(state.selectedDate);
     });
 
     // Add event listener for previous date button
@@ -384,6 +386,7 @@ function initializeDatePicker() {
         datePicker.value = state.selectedDate;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
+        await fetchAndDisplayTopHabits(state.selectedDate);
     });
 
     // Add event listener for next date button
@@ -394,6 +397,7 @@ function initializeDatePicker() {
         datePicker.value = state.selectedDate;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
+        await fetchAndDisplayTopHabits(state.selectedDate);
     });
 
     // Add event listener for today button
@@ -403,6 +407,7 @@ function initializeDatePicker() {
         datePicker.value = today;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
+        await fetchAndDisplayTopHabits(state.selectedDate);
     });
 }
 
@@ -727,6 +732,91 @@ function renderProgressChart(categoryPoints) {
 }
 
 /**
+ * Fetch and display top 5 habits for the current month up to the previous day
+ */
+async function fetchAndDisplayTopHabits(currentDate) {
+    const topHabitsList = document.getElementById('top_habits_list');
+
+    // Parse the current date
+    const currentDateObj = new Date(currentDate + 'T00:00:00');
+
+    // Calculate the previous day (end date for top habits)
+    const endDateObj = new Date(currentDateObj);
+    endDateObj.setDate(endDateObj.getDate() - 1);
+    const endDate = endDateObj.toLocaleDateString('en-CA');
+
+    // Calculate the start date (first day of the current month)
+    const startDateObj = new Date(currentDateObj.getFullYear(), currentDateObj.getMonth(), 1);
+    const startDate = startDateObj.toLocaleDateString('en-CA');
+
+    // Fetch habit log entries for the date range
+    const { data, error } = await supabase
+        .from(CONFIG.tables.habitLog)
+        .select(`
+            date,
+            habit,
+            habits (
+                id,
+                name,
+                category
+            )
+        `)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+    if (error) {
+        console.error('Error fetching top habits data:', error);
+        topHabitsList.innerHTML = `<p>Error loading top habits: ${error.message}</p>`;
+        return;
+    }
+
+    // Count occurrences of each habit
+    const habitCounts = {};
+
+    if (data && data.length > 0) {
+        data.forEach(row => {
+            const habitId = row.habit;
+            const habitName = row.habits.name;
+            const categoryId = row.habits.category;
+
+            if (!habitCounts[habitId]) {
+                habitCounts[habitId] = {
+                    name: habitName,
+                    category: categoryId,
+                    count: 0
+                };
+            }
+            habitCounts[habitId].count += 1;
+        });
+    }
+
+    // Sort habits by count (descending) and take top 5
+    const sortedHabits = Object.entries(habitCounts)
+        .map(([habitId, data]) => ({ id: habitId, name: data.name, category: data.category, count: data.count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    // Build the HTML for display
+    if (sortedHabits.length > 0) {
+        let html = '<ol>';
+        sortedHabits.forEach(habit => {
+            const countWord = habit.count === 1 ? 'time' : 'times';
+            const color = getCategoryColor(habit.category);
+            html += `
+                <li style="border-left-color: ${color.border}; background-color: ${color.bg};">
+                    <span class="habit-name">${habit.name}</span>
+                    <span class="habit-count">${habit.count} ${countWord}</span>
+                </li>
+            `;
+        });
+        html += '</ol>';
+        topHabitsList.innerHTML = html;
+    } else {
+        topHabitsList.innerHTML = '<p>No habits logged this month yet.</p>';
+    }
+}
+
+/**
  * Load all habits from Supabase and store in memory
  */
 async function loadAllHabits() {
@@ -848,11 +938,12 @@ async function onRecordHabitClicked() {
         }
         
         console.log('Habit recorded successfully:', data);
-        
+
         // Refresh the logged points display for the selected date
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
-        
+        await fetchAndDisplayTopHabits(state.selectedDate);
+
         // Reset the form
         document.getElementById('category_dropdown').value = '';
         habitDropdown.value = '';
