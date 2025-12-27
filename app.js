@@ -364,17 +364,18 @@ function initializeDatePicker() {
     const datePicker = document.getElementById('date_picker');
     const prevButton = document.getElementById('prev_date_button');
     const nextButton = document.getElementById('next_date_button');
-    
+    const todayButton = document.getElementById('today_button');
+
     // Set default value to today
     datePicker.value = state.selectedDate;
-    
+
     // Add event listener for date changes
     datePicker.addEventListener('change', async function(event) {
         state.selectedDate = event.target.value;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
     });
-    
+
     // Add event listener for previous date button
     prevButton.addEventListener('click', async function() {
         const currentDate = new Date(state.selectedDate + 'T00:00:00');
@@ -384,13 +385,22 @@ function initializeDatePicker() {
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
     });
-    
+
     // Add event listener for next date button
     nextButton.addEventListener('click', async function() {
         const currentDate = new Date(state.selectedDate + 'T00:00:00');
         currentDate.setDate(currentDate.getDate() + 1);
         state.selectedDate = currentDate.toLocaleDateString('en-CA');
         datePicker.value = state.selectedDate;
+        await fetchAndDisplayLoggedPoints(state.selectedDate);
+        await fetchAndDisplayProgress(state.selectedDate);
+    });
+
+    // Add event listener for today button
+    todayButton.addEventListener('click', async function() {
+        const today = new Date().toLocaleDateString('en-CA');
+        state.selectedDate = today;
+        datePicker.value = today;
         await fetchAndDisplayLoggedPoints(state.selectedDate);
         await fetchAndDisplayProgress(state.selectedDate);
     });
@@ -402,6 +412,7 @@ function initializeDatePicker() {
 async function fetchAndDisplayLoggedPoints(date) {
     const listElement = document.getElementById('logged_points_list');
     const headingElement = document.getElementById('points_heading');
+    const totalBadge = document.getElementById('total_points_badge');
     listElement.innerHTML = ''; // Clear the "Loading" message
 
     // Update heading based on selected date
@@ -413,7 +424,7 @@ async function fetchAndDisplayLoggedPoints(date) {
         month: 'long',
         day: 'numeric'
     });
-    
+
     if (date === today) {
         headingElement.textContent = "Today's Logged Points";
     } else {
@@ -441,10 +452,11 @@ async function fetchAndDisplayLoggedPoints(date) {
 
     // Organize habits by category
     const habitsByCategory = {};
-    
+    let totalPoints = 0;
+
     if (data && data.length > 0) {
         console.log(data)
-        
+
         // Group habits by category
         data.forEach(row => {
             const categoryId = row.habits.category;
@@ -454,14 +466,20 @@ async function fetchAndDisplayLoggedPoints(date) {
                     habits: []
                 };
             }
-            
-            habitsByCategory[categoryId].totalPoints += row.habits.default_points;
+
+            const points = row.habits.default_points;
+            habitsByCategory[categoryId].totalPoints += points;
             habitsByCategory[categoryId].habits.push({
                 name: row.habits.name,
-                points: row.habits.default_points
+                points: points
             });
+            totalPoints += points;
         });
-        
+
+        // Update total points badge
+        const pointWord = totalPoints === 1 ? 'point' : 'points';
+        totalBadge.textContent = `${totalPoints} ${pointWord}`;
+
         // Build the nested list structure
         for (const categoryId in habitsByCategory) {
             const categoryData = habitsByCategory[categoryId];
@@ -503,12 +521,15 @@ async function fetchAndDisplayLoggedPoints(date) {
         }
         renderPointsChart(categoryPoints);
     } else {
+        // No points logged - update badge to show 0
+        totalBadge.textContent = '0 points';
+
         if (date === today) {
             listElement.innerHTML = '<li>No points earned today.</li>';
         } else {
             listElement.innerHTML = `<li>No points earned on ${dateString}.</li>`;
         }
-        
+
         // Render chart with all categories at 0 points
         renderPointsChart({});
     }

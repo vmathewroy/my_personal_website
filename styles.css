@@ -193,6 +193,62 @@ h2 {
     height: 20px;
 }
 
+/* Today Button */
+.today-button {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    height: 44px;
+    width: auto;
+    background: var(--accent-blue);
+    border: 2px solid var(--accent-blue);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    margin-left: 4px;
+}
+
+.today-button:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.today-button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Points Header with Badge */
+.points-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.points-header h2 {
+    margin: 0;
+}
+
+/* Total Points Badge */
+.total-points-badge {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    background: #0a0a0a;
+    padding: 10px 24px;
+    border-radius: 12px;
+    border: 2px solid var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    white-space: nowrap;
+}
+
 /* Today's Logged Points List */
 #logged_points_list {
     list-style: none;

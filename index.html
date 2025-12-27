@@ -50,11 +50,15 @@
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
             </button>
+            <button type="button" id="today_button" class="today-button">Today</button>
         </div>
     </div>
     
-    <h2 id="points_heading">Today's Logged Points</h2>
-    
+    <div class="points-header">
+        <h2 id="points_heading">Today's Logged Points</h2>
+        <div id="total_points_badge" class="total-points-badge">0 points</div>
+    </div>
+
     <div id="chart_container">
         <canvas id="points_chart"></canvas>
     </div>
