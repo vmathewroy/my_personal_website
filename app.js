@@ -816,8 +816,7 @@ async function onRecordHabitClicked() {
             .from(CONFIG.tables.habitLog)
             .insert({
                 date: localDate,
-                habit: selectedHabitId,
-                recorded_points: selectedHabit.default_points
+                habit: selectedHabitId
             })
             .select();
         
