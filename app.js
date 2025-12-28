@@ -462,22 +462,31 @@ async function fetchAndDisplayLoggedPoints(date) {
     if (data && data.length > 0) {
         console.log(data)
 
-        // Group habits by category
+        // Group habits by category and aggregate duplicates
         data.forEach(row => {
             const categoryId = row.habits.category;
+            const habitName = row.habits.name;
+            const points = row.habits.default_points;
+            
             if (!habitsByCategory[categoryId]) {
                 habitsByCategory[categoryId] = {
                     totalPoints: 0,
-                    habits: []
+                    habits: {}
                 };
             }
 
-            const points = row.habits.default_points;
+            // Aggregate habits by name within category
+            if (!habitsByCategory[categoryId].habits[habitName]) {
+                habitsByCategory[categoryId].habits[habitName] = {
+                    count: 0,
+                    totalPoints: 0,
+                    pointsPerEntry: points
+                };
+            }
+            
+            habitsByCategory[categoryId].habits[habitName].count += 1;
+            habitsByCategory[categoryId].habits[habitName].totalPoints += points;
             habitsByCategory[categoryId].totalPoints += points;
-            habitsByCategory[categoryId].habits.push({
-                name: row.habits.name,
-                points: points
-            });
             totalPoints += points;
         });
 
@@ -504,12 +513,18 @@ async function fetchAndDisplayLoggedPoints(date) {
             categoryItem.style.backgroundColor = color.bg;
             categoryItem.setAttribute('data-category-id', categoryId);
             
-            // Create nested list for habits
+            // Create nested list for habits (now aggregated)
             const habitsList = document.createElement('ul');
-            categoryData.habits.forEach(habit => {
+            const habitEntries = Object.entries(categoryData.habits);
+            
+            // Sort habits by count (descending) for better visibility
+            habitEntries.sort((a, b) => b[1].count - a[1].count);
+            
+            habitEntries.forEach(([habitName, habitData]) => {
                 const habitItem = document.createElement('li');
-                const habitPointWord = habit.points === 1 ? 'point' : 'points';
-                habitItem.textContent = `${habit.name}; ${habit.points} ${habitPointWord}`;
+                const habitPointWord = habitData.totalPoints === 1 ? 'point' : 'points';
+                const countDisplay = habitData.count > 1 ? ` (${habitData.count}x)` : '';
+                habitItem.textContent = `${habitName}${countDisplay} - ${habitData.totalPoints} ${habitPointWord}`;
                 // Subtle border color for habits matching category
                 habitItem.style.borderLeftColor = color.border;
                 habitsList.appendChild(habitItem);
