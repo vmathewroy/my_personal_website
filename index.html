@@ -4,98 +4,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habit Tracker</title>
+    <meta name="theme-color" content="#080b10">
+    <meta name="description" content="A personal habit tracker for logging daily wins and seeing progress over time.">
+    <title>Habit Tracker — Daily Momentum</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-<div id="add_habit_section">
-    <h2>Add New Habit</h2>
-    
-    <!-- Step 1: Select Habit Category -->
-    <div>
-        <label for="category_dropdown">Select Habit Category:</label>
-        <select id="category_dropdown">
-            <option value="">-- Choose a category --</option>
-        </select>
-    </div>
-    
-    <!-- Step 2: Select Habit (initially hidden) -->
-    <div id="habit_selection_container" style="display: none; margin-top: 15px;">
-        <label for="habit_dropdown">Select Habit:</label>
-        <select id="habit_dropdown">
-            <option value="">-- Choose a habit --</option>
-        </select>
-    </div>
-    
-    <!-- Step 3: Record Habit Button (initially hidden) -->
-    <div id="record_button_container" style="display: none; margin-top: 15px;">
-        <button id="record_habit_button">Record Habit</button>
-    </div>
-</div>
-
-<div id="today_section">
-    <!-- Date Selector -->
-    <div style="margin-bottom: 20px;">
-        <label for="date_picker">Select Date:</label>
-        <div class="date-navigation">
-            <button type="button" id="prev_date_button" class="date-nav-button" aria-label="Previous day">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </button>
-            <input type="date" id="date_picker" />
-            <button type="button" id="next_date_button" class="date-nav-button" aria-label="Next day">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
-            <button type="button" id="today_button" class="today-button">Today</button>
+    <header class="site-header">
+        <div class="header-row">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <span class="brand-copy">
+                    <strong>Habit Tracker</strong>
+                </span>
+            </div>
         </div>
-    </div>
-    
-    <div class="points-header">
-        <h2 id="points_heading">Today's Logged Points</h2>
-        <div id="total_points_badge" class="total-points-badge">0 points</div>
-    </div>
+    </header>
 
-    <div id="chart_container">
-        <canvas id="points_chart"></canvas>
-    </div>
-    
-    <ul id="logged_points_list">
-        <li>Loading data...</li>
-    </ul>
-</div>
+    <main class="app-shell">
+        <section class="active-date-card" aria-labelledby="active_date_label">
+            <div class="active-date-copy">
+                <p class="eyebrow">Active day</p>
+                <h2 id="active_date_label">Today</h2>
+                <p>Everything you log is saved to this date.</p>
+            </div>
 
-<div id="progress_section">
-    <h2>Progress - Current Month</h2>
-    <div id="progress_summary">
-        <p>Loading progress data...</p>
-    </div>
-    <div id="progress_chart_container">
-        <canvas id="progress_chart"></canvas>
-    </div>
-</div>
+            <div class="date-control">
+                <label for="date_picker">Choose a day</label>
+                <div class="date-navigation">
+                    <button type="button" id="prev_date_button" class="date-nav-button" aria-label="Previous day">
+                        <span aria-hidden="true">←</span>
+                    </button>
+                    <input type="date" id="date_picker">
+                    <button type="button" id="next_date_button" class="date-nav-button" aria-label="Next day">
+                        <span aria-hidden="true">→</span>
+                    </button>
+                    <button type="button" id="today_button" class="today-button">Jump to today</button>
+                </div>
+            </div>
+        </section>
 
-<div id="top_habits_section">
-    <h2>Top Habits - Current Month</h2>
-    <div id="top_habits_list">
-        <p>Loading top habits...</p>
-    </div>
-</div>
+        <div class="dashboard">
+            <section id="add_habit_section" class="panel quick-log-panel" aria-labelledby="log_habit_heading">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">Quick check-in</p>
+                        <h2 id="log_habit_heading">Log a habit</h2>
+                    </div>
+                    <span class="panel-index" aria-hidden="true">01</span>
+                </div>
+                <p class="panel-intro">Choose what you completed and add it to your active day.</p>
 
-<footer id="disclaimer">
-    <button id="reconfigure_button" onclick="reconfigureApp()" style="margin-bottom: 10px; padding: 4px 12px !important; cursor: pointer; background: #f5f5f5 !important; color: #666 !important; border: 1px solid #ddd !important; border-radius: 3px !important; font-size: 0.85em !important; font-weight: 400 !important; width: auto !important; box-shadow: none !important;">
-        Redo Setup
-    </button>
-    <p>Disclaimer: This webapp was coded with Kilo-Code and Anthropic Claude Sonnet 4.5</p>
-</footer>
+                <div class="logging-context">
+                    <span class="logging-dot" aria-hidden="true"></span>
+                    Saving to <strong id="log_date_label">today</strong>
+                </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<script type="module" src="app.js"></script>
+                <form class="habit-form" onsubmit="return false;">
+                    <div class="field-group">
+                        <label for="category_dropdown">
+                            <span class="field-step" aria-hidden="true">1</span>
+                            Category
+                        </label>
+                        <div class="select-shell">
+                            <select id="category_dropdown">
+                                <option value="">Choose a category</option>
+                            </select>
+                        </div>
+                    </div>
 
+                    <div id="habit_selection_container" class="field-group reveal-step" hidden>
+                        <label for="habit_dropdown">
+                            <span class="field-step" aria-hidden="true">2</span>
+                            Habit
+                        </label>
+                        <div class="select-shell">
+                            <select id="habit_dropdown">
+                                <option value="">Choose a habit</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="quantity_selection_container" class="field-group reveal-step" hidden>
+                        <label for="habit_quantity">
+                            <span class="field-step" aria-hidden="true">3</span>
+                            Amount to log
+                        </label>
+                        <div class="quantity-control">
+                            <button type="button" id="decrease_quantity_button" class="quantity-button" aria-label="Decrease amount">−</button>
+                            <input type="number" id="habit_quantity" value="1" min="1" max="99" step="1" inputmode="numeric" aria-describedby="quantity_hint">
+                            <button type="button" id="increase_quantity_button" class="quantity-button" aria-label="Increase amount">+</button>
+                        </div>
+                        <p id="quantity_hint" class="field-hint">Leave this at 1 for a single completion (up to 99 at once).</p>
+                    </div>
+
+                    <div id="record_button_container" class="reveal-step" hidden>
+                        <button type="button" id="record_habit_button" class="primary-button">
+                            <span>Log this habit</span>
+                            <span aria-hidden="true">↗</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="today_section" class="panel daily-panel" aria-labelledby="points_heading">
+                <div class="panel-header points-header">
+                    <div>
+                        <p class="panel-kicker">Daily score</p>
+                        <h2 id="points_heading">Today's activity</h2>
+                    </div>
+                    <div id="total_points_badge" class="total-points-badge" role="status" aria-live="polite">0 points</div>
+                </div>
+
+                <div id="chart_container" class="chart-block">
+                    <div class="block-heading">
+                        <div>
+                            <h3>Points by category</h3>
+                            <p>All categories, including those at zero.</p>
+                        </div>
+                        <span class="chart-key"><span aria-hidden="true"></span> Points</span>
+                    </div>
+                    <div class="chart-canvas chart-canvas--daily">
+                        <canvas id="points_chart" role="img" aria-label="Daily points by category" aria-describedby="points_chart_description"></canvas>
+                    </div>
+                    <p id="points_chart_description" class="visually-hidden">Daily category points are loading.</p>
+                </div>
+
+                <div class="activity-block">
+                    <div class="block-heading">
+                        <div>
+                            <h3>Activity details</h3>
+                            <p>Your completed habits, grouped by category.</p>
+                        </div>
+                    </div>
+                    <ul id="logged_points_list" aria-live="polite" aria-busy="true">
+                        <li class="state-message">Loading today's activity…</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="progress_section" class="panel progress-panel" aria-labelledby="progress_heading">
+                <div class="panel-header">
+                    <div>
+                        <p id="progress_period" class="panel-kicker">Selected month</p>
+                        <h2 id="progress_heading">Month at a glance</h2>
+                    </div>
+                    <span class="panel-index" aria-hidden="true">02</span>
+                </div>
+
+                <div id="progress_summary" aria-live="polite" aria-busy="true">
+                    <p class="state-message">Loading monthly progress…</p>
+                </div>
+
+                <div id="progress_chart_container" class="chart-block">
+                    <div class="block-heading">
+                        <div>
+                            <h3>Category balance</h3>
+                            <p>All categories through the previous day.</p>
+                        </div>
+                    </div>
+                    <div class="chart-canvas chart-canvas--progress">
+                        <canvas id="progress_chart" role="img" aria-label="Monthly progress by category" aria-describedby="progress_chart_description"></canvas>
+                    </div>
+                    <p id="progress_chart_description" class="visually-hidden">Monthly category progress is loading.</p>
+                </div>
+            </section>
+
+            <section id="top_habits_section" class="panel top-habits-panel" aria-labelledby="top_habits_heading">
+                <div class="panel-header">
+                    <div>
+                        <p id="top_habits_period" class="panel-kicker">Selected month</p>
+                        <h2 id="top_habits_heading">Most consistent</h2>
+                    </div>
+                    <span class="panel-index" aria-hidden="true">03</span>
+                </div>
+                <p class="panel-intro">The habits you returned to most often.</p>
+
+                <div id="top_habits_list" aria-live="polite" aria-busy="true">
+                    <p class="state-message">Loading top habits…</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer id="disclaimer" class="site-footer">
+        <div>
+            <strong>Keep showing up.</strong>
+            <p>Small actions, made visible.</p>
+        </div>
+        <div class="footer-meta">
+            <span>Built with Kilo-Code, Anthropic Claude Sonnet 4.5, and OpenAI GPT 5.6</span>
+            <button type="button" id="reconfigure_button" class="quiet-button" onclick="reconfigureApp()">Redo setup</button>
+        </div>
+    </footer>
+
+    <div id="app_toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>

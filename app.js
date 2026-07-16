@@ -2,6 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // Configuration storage key
 const CONFIG_STORAGE_KEY = 'habitTrackerConfig';
+const MAX_HABIT_QUANTITY = 99;
 
 // Default configuration structure
 const CONFIG = {
@@ -52,42 +53,161 @@ function saveConfig(supabaseUrl, supabaseKey, redirectUrl) {
 }
 
 /**
- * Prompt user for configuration values
+ * Present setup and sign-in forms inside the app instead of browser prompts.
  */
-function promptForConfig() {
-    alert('Welcome! Please enter your Supabase configuration details.');
-    
-    let supabaseUrl = prompt('Enter your Supabase URL:');
-    if (!supabaseUrl) {
-        alert('Configuration cancelled. The app requires configuration to work.');
-        return false;
-    }
-    
-    let supabaseKey = prompt('Enter your Supabase API Key:');
-    if (!supabaseKey) {
-        alert('Configuration cancelled. The app requires configuration to work.');
-        return false;
-    }
-    
-    let redirectUrl = prompt('Enter your Redirect URL:');
-    if (!redirectUrl) {
-        alert('Configuration cancelled. The app requires configuration to work.');
-        return false;
-    }
-    
-    saveConfig(supabaseUrl, supabaseKey, redirectUrl);
-    alert('Configuration saved successfully!');
+function requestFormDialog({ eyebrow, title, description, fields = [], submitLabel, cancelLabel, note }) {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        const form = document.createElement('form');
+        const header = document.createElement('div');
+        const mark = document.createElement('span');
+        const headingGroup = document.createElement('div');
+        const eyebrowElement = document.createElement('p');
+        const heading = document.createElement('h2');
+        const copy = document.createElement('p');
+        const fieldsContainer = document.createElement('div');
+        const actions = document.createElement('div');
+        const cancelButton = document.createElement('button');
+        const submitButton = document.createElement('button');
+        let settled = false;
+
+        dialog.className = 'app-dialog';
+        dialog.setAttribute('aria-labelledby', 'app_dialog_heading');
+        form.className = 'dialog-form';
+        header.className = 'dialog-header';
+        mark.className = 'dialog-mark';
+        mark.setAttribute('aria-hidden', 'true');
+        headingGroup.className = 'dialog-heading-group';
+        eyebrowElement.className = 'panel-kicker';
+        heading.id = 'app_dialog_heading';
+        copy.className = 'dialog-description';
+        fieldsContainer.className = 'dialog-fields';
+        actions.className = 'dialog-actions';
+
+        eyebrowElement.textContent = eyebrow;
+        heading.textContent = title;
+        copy.textContent = description;
+        headingGroup.append(eyebrowElement, heading);
+        header.append(mark, headingGroup);
+        form.append(header, copy);
+
+        fields.forEach(field => {
+            const fieldGroup = document.createElement('div');
+            const label = document.createElement('label');
+            const input = document.createElement('input');
+
+            fieldGroup.className = 'dialog-field';
+            input.id = `dialog_${field.name}`;
+            input.name = field.name;
+            input.type = field.type || 'text';
+            input.required = field.required !== false;
+            input.value = field.value || '';
+            input.placeholder = field.placeholder || '';
+            if (field.autocomplete) input.autocomplete = field.autocomplete;
+            label.htmlFor = input.id;
+            label.textContent = field.label;
+            fieldGroup.append(label, input);
+            fieldsContainer.appendChild(fieldGroup);
+        });
+
+        if (fields.length) form.appendChild(fieldsContainer);
+
+        if (note) {
+            const noteElement = document.createElement('p');
+            noteElement.className = 'dialog-note';
+            noteElement.textContent = note;
+            form.appendChild(noteElement);
+        }
+
+        cancelButton.type = 'button';
+        cancelButton.className = 'dialog-button dialog-button--secondary';
+        cancelButton.textContent = cancelLabel;
+        submitButton.type = 'submit';
+        submitButton.className = 'dialog-button dialog-button--primary';
+        submitButton.textContent = submitLabel;
+        actions.append(cancelButton, submitButton);
+        form.appendChild(actions);
+        dialog.appendChild(form);
+
+        function finish(value) {
+            if (settled) return;
+            settled = true;
+            if (dialog.open) dialog.close();
+            dialog.remove();
+            resolve(value);
+        }
+
+        cancelButton.addEventListener('click', () => finish(null));
+        dialog.addEventListener('cancel', event => {
+            event.preventDefault();
+            finish(null);
+        });
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const values = {};
+            fields.forEach(field => {
+                values[field.name] = form.elements.namedItem(field.name).value.trim();
+            });
+            finish(values);
+        });
+
+        document.body.appendChild(dialog);
+        dialog.showModal();
+    });
+}
+
+/**
+ * Ask for Supabase configuration values.
+ */
+async function promptForConfig() {
+    const values = await requestFormDialog({
+        eyebrow: 'Private setup',
+        title: 'Connect your habit data',
+        description: 'Add the Supabase details for this tracker. They stay saved in this browser on this device.',
+        fields: [
+            {
+                name: 'supabaseUrl',
+                label: 'Supabase URL',
+                type: 'url',
+                placeholder: 'https://your-project.supabase.co',
+                value: CONFIG.supabaseUrl,
+                autocomplete: 'url'
+            },
+            {
+                name: 'supabaseKey',
+                label: 'Supabase anon / publishable key',
+                type: 'password',
+                placeholder: 'Paste your anon key',
+                value: CONFIG.supabaseKey,
+                autocomplete: 'off'
+            },
+            {
+                name: 'redirectUrl',
+                label: 'Login redirect URL',
+                type: 'url',
+                placeholder: 'https://your-site.example.com',
+                value: CONFIG.redirectUrl,
+                autocomplete: 'url'
+            }
+        ],
+        submitLabel: 'Save setup',
+        cancelLabel: 'Not now',
+        note: 'Use only the browser-safe anon/publishable key here — never a service-role or secret key. The value is saved in this browser on this device.'
+    });
+
+    if (!values) return false;
+    saveConfig(values.supabaseUrl, values.supabaseKey, values.redirectUrl);
     return true;
 }
 
 /**
  * Check and initialize configuration
  */
-function initializeConfig() {
+async function initializeConfig() {
     const hasConfig = loadConfig();
     
     if (!hasConfig || !CONFIG.supabaseUrl || !CONFIG.supabaseKey || !CONFIG.redirectUrl) {
-        return promptForConfig();
+        return await promptForConfig();
     }
     
     return true;
@@ -96,34 +216,38 @@ function initializeConfig() {
 /**
  * Reconfigure the application (called from UI button)
  */
-window.reconfigureApp = function() {
-    const confirm = window.confirm('Are you sure you want to reconfigure? This will reload the page after saving new settings.');
-    if (confirm) {
-        if (promptForConfig()) {
-            location.reload();
-        }
-    }
+window.reconfigureApp = async function() {
+    const confirmed = await requestFormDialog({
+        eyebrow: 'Connection settings',
+        title: 'Redo your setup?',
+        description: 'You can replace the saved Supabase connection. The page will reload after the new details are saved.',
+        submitLabel: 'Update setup',
+        cancelLabel: 'Keep current setup'
+    });
+
+    if (!confirmed) return;
+    if (await promptForConfig()) location.reload();
 };
 
-// Color palette for categories (will cycle through these) - Dark theme optimized
+// Color palette for categories (will cycle through these)
 const CATEGORY_COLORS = [
-    { border: '#60a5fa', bg: '#1e3a5f' },  // Blue
-    { border: '#4ade80', bg: '#1a3d2e' },  // Green
-    { border: '#fb923c', bg: '#3d2817' },  // Orange
-    { border: '#c084fc', bg: '#3d2054' },  // Purple
-    { border: '#f87171', bg: '#3d1a1a' },  // Red
-    { border: '#22d3ee', bg: '#0f3d47' },  // Cyan
-    { border: '#fbbf24', bg: '#3d3410' },  // Yellow
-    { border: '#f472b6', bg: '#3d1a30' },  // Pink
-    { border: '#2dd4bf', bg: '#0f3d3a' },  // Teal
-    { border: '#fb7185', bg: '#3d1721' },  // Rose
-    { border: '#a78bfa', bg: '#2d1f54' },  // Violet
-    { border: '#86efac', bg: '#1a3d28' }   // Light Green
+    { border: '#78c9ff', bg: 'rgba(120, 201, 255, 0.24)' },
+    { border: '#87e7c5', bg: 'rgba(135, 231, 197, 0.24)' },
+    { border: '#ffb86b', bg: 'rgba(255, 184, 107, 0.24)' },
+    { border: '#aa98ff', bg: 'rgba(170, 152, 255, 0.24)' },
+    { border: '#ff8f91', bg: 'rgba(255, 143, 145, 0.24)' },
+    { border: '#65dce6', bg: 'rgba(101, 220, 230, 0.24)' },
+    { border: '#f2d66f', bg: 'rgba(242, 214, 111, 0.24)' },
+    { border: '#f39ac7', bg: 'rgba(243, 154, 199, 0.24)' },
+    { border: '#6fd8bc', bg: 'rgba(111, 216, 188, 0.24)' },
+    { border: '#ff9cac', bg: 'rgba(255, 156, 172, 0.24)' },
+    { border: '#c0a6ff', bg: 'rgba(192, 166, 255, 0.24)' },
+    { border: '#b8f36a', bg: 'rgba(184, 243, 106, 0.24)' }
 ];
 
 // Application state
 const state = {
-    categories: new Map(),
+    categories: {},
     categoryColors: new Map(), // Store color assignments
     habits: [], // Store all habits in memory
     currentUser: null,
@@ -133,6 +257,114 @@ const state = {
 // Chart instances
 let pointsChart = null;
 let progressChart = null;
+let toastTimer = null;
+
+/**
+ * Read a theme value so Chart.js stays visually aligned with the page.
+ */
+function getThemeValue(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+}
+
+/**
+ * Give category charts enough room to render every category as its own row.
+ */
+function sizeCategoryChart(canvas, categoryCount, isCompact, minimumHeight) {
+    const chartCanvas = canvas.closest('.chart-canvas');
+    if (!chartCanvas) return;
+
+    const rowHeight = isCompact ? 38 : 36;
+    const chartHeight = Math.max(minimumHeight, (categoryCount * rowHeight) + 52);
+    chartCanvas.style.height = `${chartHeight}px`;
+}
+
+/**
+ * Replace loading, empty, or error content with an accessible status message.
+ */
+function setContainerMessage(container, message, type = 'empty') {
+    const messageElement = document.createElement(container.matches('ul, ol') ? 'li' : 'p');
+    messageElement.className = `state-message${type === 'error' ? ' state-message--error' : ''}`;
+    messageElement.textContent = message;
+    container.replaceChildren(messageElement);
+    container.setAttribute('aria-busy', 'false');
+
+    if (type === 'error') {
+        container.setAttribute('role', 'alert');
+    } else {
+        container.removeAttribute('role');
+    }
+}
+
+/**
+ * Show non-blocking feedback after a habit is recorded.
+ */
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('app_toast');
+    if (!toast) return;
+
+    window.clearTimeout(toastTimer);
+    toast.textContent = message;
+    toast.classList.toggle('is-error', type === 'error');
+    toast.classList.add('is-visible');
+    toastTimer = window.setTimeout(() => {
+        toast.classList.remove('is-visible');
+    }, 3600);
+}
+
+/**
+ * Keep the active-day context and selected-month labels in sync.
+ */
+function updateDateContext(date) {
+    const dateObject = new Date(`${date}T00:00:00`);
+    const today = new Date().toLocaleDateString('en-CA');
+    const shortDate = dateObject.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric'
+    });
+    const longDate = dateObject.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
+    const monthLabel = dateObject.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+    });
+
+    const activeDateLabel = document.getElementById('active_date_label');
+    const logDateLabel = document.getElementById('log_date_label');
+    const progressPeriod = document.getElementById('progress_period');
+    const topHabitsPeriod = document.getElementById('top_habits_period');
+
+    if (activeDateLabel) {
+        activeDateLabel.textContent = date === today ? `Today · ${shortDate}` : longDate;
+    }
+    if (logDateLabel) {
+        logDateLabel.textContent = date === today ? 'today' : shortDate;
+    }
+    if (progressPeriod) {
+        progressPeriod.textContent = monthLabel;
+    }
+    if (topHabitsPeriod) {
+        topHabitsPeriod.textContent = monthLabel;
+    }
+}
+
+/**
+ * Render configuration failures using the same visual language as the app.
+ */
+function renderFatalState(title, message) {
+    const container = document.createElement('main');
+    const heading = document.createElement('h1');
+    const copy = document.createElement('p');
+
+    container.className = 'fatal-state';
+    heading.textContent = title;
+    copy.textContent = message;
+    container.append(heading, copy);
+    document.body.replaceChildren(container);
+}
 
 /**
  * Get color for a category ID (assigns consistently based on category ID)
@@ -160,35 +392,50 @@ function getCategoryColor(categoryId) {
  */
 function renderPointsChart(categoryPoints) {
     const canvas = document.getElementById('points_chart');
-    
+
     if (!canvas) {
         console.error('Canvas element not found');
         return;
     }
-    
+
     // Get all categories and their points (including zero points)
     const categoryIds = Object.keys(state.categories);
     const labels = [];
     const data = [];
     const backgroundColors = [];
     const borderColors = [];
-    
+
     categoryIds.forEach(categoryId => {
         const categoryName = state.categories[categoryId];
         const points = categoryPoints[categoryId] || 0; // Default to 0 if no points
         const color = getCategoryColor(categoryId);
-        
+
         labels.push(categoryName);
         data.push(points);
         backgroundColors.push(color.bg);
         borderColors.push(color.border);
     });
-    
+
+    const chartDescription = document.getElementById('points_chart_description');
+    if (chartDescription) {
+        chartDescription.textContent = labels.length
+            ? labels.map((label, index) => `${label}: ${data[index]} ${data[index] === 1 ? 'point' : 'points'}`).join('. ')
+            : 'No habit categories are available yet.';
+    }
+
     // Destroy existing chart if it exists
     if (pointsChart) {
         pointsChart.destroy();
     }
-    
+
+    const textColor = getThemeValue('--text-secondary', '#9ea8b5');
+    const subtleColor = getThemeValue('--text-subtle', '#6f7a89');
+    const surfaceColor = getThemeValue('--surface-raised', '#171f2a');
+    const borderColor = getThemeValue('--border-strong', 'rgba(255, 255, 255, 0.14)');
+    const fontFamily = getThemeValue('--font-body', 'sans-serif');
+    const isCompact = window.matchMedia('(max-width: 640px)').matches;
+    sizeCategoryChart(canvas, labels.length, isCompact, isCompact ? 250 : 275);
+
     // Create new chart
     const ctx = canvas.getContext('2d');
     pointsChart = new Chart(ctx, {
@@ -201,33 +448,64 @@ function renderPointsChart(categoryPoints) {
                 data: data,
                 backgroundColor: backgroundColors,
                 borderColor: borderColors,
-                borderWidth: 2
+                borderWidth: 1.5,
+                borderRadius: 9,
+                borderSkipped: false,
+                maxBarThickness: isCompact ? 26 : 30
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
+            },
+            layout: {
+                padding: {
+                    right: isCompact ? 18 : 28
+                }
+            },
             scales: {
-                y: {
+                x: {
                     beginAtZero: true,
                     grace: '10%',
                     ticks: {
                         stepSize: 1,
+                        color: subtleColor,
+                        padding: 8,
                         font: {
-                            size: 12
+                            family: fontFamily,
+                            size: 11,
+                            weight: 600
                         }
                     },
+                    border: {
+                        display: false
+                    },
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(255, 255, 255, 0.06)',
+                        drawTicks: false
                     }
                 },
-                x: {
+                y: {
                     ticks: {
+                        color: textColor,
+                        autoSkip: false,
+                        padding: 9,
                         font: {
-                            size: 12
+                            family: fontFamily,
+                            size: isCompact ? 10 : 11,
+                            weight: 600
                         },
-                        maxRotation: 90,
-                        minRotation: 45
+                        callback: function(value) {
+                            const label = this.getLabelForValue(value);
+                            const maxLength = isCompact ? 12 : 18;
+                            return label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
+                        }
+                    },
+                    border: {
+                        display: false
                     },
                     grid: {
                         display: false
@@ -239,32 +517,44 @@ function renderPointsChart(categoryPoints) {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: surfaceColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
                     padding: 12,
+                    displayColors: false,
+                    titleColor: getThemeValue('--text-primary', '#f4f7f2'),
+                    bodyColor: textColor,
                     titleFont: {
-                        size: 14
+                        family: fontFamily,
+                        size: 13
                     },
                     bodyFont: {
-                        size: 13
+                        family: fontFamily,
+                        size: 12
                     },
                     callbacks: {
                         label: function(context) {
-                            const points = context.parsed.y;
+                            const points = context.parsed.x;
                             return points === 1 ? '1 point' : `${points} points`;
                         }
                     }
                 },
                 datalabels: {
                     anchor: 'end',
-                    align: 'top',
+                    align: 'right',
                     formatter: function(value) {
                         return value;
                     },
                     font: {
-                        weight: 'bold',
-                        size: 12
+                        family: fontFamily,
+                        weight: 700,
+                        size: 11
                     },
-                    color: '#ffffff'
+                    color: function(context) {
+                        return context.dataset.data[context.dataIndex] === 0
+                            ? subtleColor
+                            : borderColors[context.dataIndex];
+                    }
                 }
             }
         }
@@ -292,7 +582,6 @@ async function checkIfUserIsLoggedIn() {
 
     if (user) {
         state.currentUser = user;
-        console.log("Logged in as:", state.currentUser.email)
         await loadAllHabits() // Load all habits into memory
         await loadCategories() // Load categories for dropdowns
         initializeDatePicker() // Set up date picker
@@ -300,11 +589,30 @@ async function checkIfUserIsLoggedIn() {
         await fetchAndDisplayProgress(state.selectedDate) // Display monthly progress
         await fetchAndDisplayTopHabits(state.selectedDate) // Display top habits for the month
     } else {
-        console.log("No user logged in")
-        // Show a login prompt (simplified for this example)
-        const email = prompt("Please enter your email to login:")
-        if (email) {
-            await loginWithEmail(email)
+        const values = await requestFormDialog({
+            eyebrow: 'Welcome back',
+            title: 'Sign in to continue',
+            description: 'Enter your email and we will send you a secure magic link to open your habit tracker.',
+            fields: [
+                {
+                    name: 'email',
+                    label: 'Email address',
+                    type: 'email',
+                    placeholder: 'you@example.com',
+                    autocomplete: 'email'
+                }
+            ],
+            submitLabel: 'Send magic link',
+            cancelLabel: 'Not now',
+            note: 'No password needed. Your sign-in link will use the redirect URL saved during setup.'
+        });
+
+        if (values?.email) {
+            await loginWithEmail(values.email)
+        } else {
+            setContainerMessage(document.getElementById('logged_points_list'), 'Sign in when you are ready to load your daily activity.');
+            setContainerMessage(document.getElementById('progress_summary'), 'Sign in to see your monthly progress.');
+            setContainerMessage(document.getElementById('top_habits_list'), 'Sign in to see your most consistent habits.');
         }
     }
 }
@@ -318,9 +626,12 @@ async function loginWithEmail(email) {
     })
 
     if (error) {
-        alert(error.message)
+        showToast(`We couldn't send the login link. ${error.message}`, 'error')
     } else {
-        alert("Check your email for the login link!")
+        showToast('Magic link sent. Check your email to finish signing in.')
+        setContainerMessage(document.getElementById('logged_points_list'), 'Check your email for the magic link, then return here to continue.');
+        setContainerMessage(document.getElementById('progress_summary'), 'Your progress will appear after you sign in.');
+        setContainerMessage(document.getElementById('top_habits_list'), 'Your top habits will appear after you sign in.');
     }
 }
 
@@ -369,45 +680,49 @@ function initializeDatePicker() {
 
     // Set default value to today
     datePicker.value = state.selectedDate;
+    updateDateContext(state.selectedDate);
+
+    async function selectDate(date) {
+        if (!date) return;
+
+        state.selectedDate = date;
+        datePicker.value = date;
+        updateDateContext(date);
+
+        document.getElementById('logged_points_list').setAttribute('aria-busy', 'true');
+        document.getElementById('progress_summary').setAttribute('aria-busy', 'true');
+        document.getElementById('top_habits_list').setAttribute('aria-busy', 'true');
+
+        await Promise.all([
+            fetchAndDisplayLoggedPoints(date),
+            fetchAndDisplayProgress(date),
+            fetchAndDisplayTopHabits(date)
+        ]);
+    }
 
     // Add event listener for date changes
     datePicker.addEventListener('change', async function(event) {
-        state.selectedDate = event.target.value;
-        await fetchAndDisplayLoggedPoints(state.selectedDate);
-        await fetchAndDisplayProgress(state.selectedDate);
-        await fetchAndDisplayTopHabits(state.selectedDate);
+        await selectDate(event.target.value);
     });
 
     // Add event listener for previous date button
     prevButton.addEventListener('click', async function() {
         const currentDate = new Date(state.selectedDate + 'T00:00:00');
         currentDate.setDate(currentDate.getDate() - 1);
-        state.selectedDate = currentDate.toLocaleDateString('en-CA');
-        datePicker.value = state.selectedDate;
-        await fetchAndDisplayLoggedPoints(state.selectedDate);
-        await fetchAndDisplayProgress(state.selectedDate);
-        await fetchAndDisplayTopHabits(state.selectedDate);
+        await selectDate(currentDate.toLocaleDateString('en-CA'));
     });
 
     // Add event listener for next date button
     nextButton.addEventListener('click', async function() {
         const currentDate = new Date(state.selectedDate + 'T00:00:00');
         currentDate.setDate(currentDate.getDate() + 1);
-        state.selectedDate = currentDate.toLocaleDateString('en-CA');
-        datePicker.value = state.selectedDate;
-        await fetchAndDisplayLoggedPoints(state.selectedDate);
-        await fetchAndDisplayProgress(state.selectedDate);
-        await fetchAndDisplayTopHabits(state.selectedDate);
+        await selectDate(currentDate.toLocaleDateString('en-CA'));
     });
 
     // Add event listener for today button
     todayButton.addEventListener('click', async function() {
         const today = new Date().toLocaleDateString('en-CA');
-        state.selectedDate = today;
-        datePicker.value = today;
-        await fetchAndDisplayLoggedPoints(state.selectedDate);
-        await fetchAndDisplayProgress(state.selectedDate);
-        await fetchAndDisplayTopHabits(state.selectedDate);
+        await selectDate(today);
     });
 }
 
@@ -418,7 +733,8 @@ async function fetchAndDisplayLoggedPoints(date) {
     const listElement = document.getElementById('logged_points_list');
     const headingElement = document.getElementById('points_heading');
     const totalBadge = document.getElementById('total_points_badge');
-    listElement.innerHTML = ''; // Clear the "Loading" message
+    listElement.replaceChildren(); // Clear the loading message
+    listElement.removeAttribute('role');
 
     // Update heading based on selected date
     const today = new Date().toLocaleDateString('en-CA');
@@ -430,11 +746,8 @@ async function fetchAndDisplayLoggedPoints(date) {
         day: 'numeric'
     });
 
-    if (date === today) {
-        headingElement.textContent = "Today's Logged Points";
-    } else {
-        headingElement.textContent = `Logged Points for ${dateString}`;
-    }
+    const weekday = selectedDateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    headingElement.textContent = date === today ? "Today's activity" : `${weekday}'s activity`;
 
     // Fetch habit log entries for the selected date
     const { data, error } = await supabase
@@ -451,7 +764,7 @@ async function fetchAndDisplayLoggedPoints(date) {
 
     if (error) {
         console.error('Error fetching data:', error);
-        listElement.innerHTML = `<li>Error loading points: ${error.message}</li>`;
+        setContainerMessage(listElement, `We couldn't load this day's activity. ${error.message}`, 'error');
         return;
     }
 
@@ -460,8 +773,6 @@ async function fetchAndDisplayLoggedPoints(date) {
     let totalPoints = 0;
 
     if (data && data.length > 0) {
-        console.log(data)
-
         // Group habits by category and aggregate duplicates
         data.forEach(row => {
             const categoryId = row.habits.category;
@@ -506,12 +817,21 @@ async function fetchAndDisplayLoggedPoints(date) {
             // Create the category list item
             const categoryItem = document.createElement('li');
             const pointWord = totalPoints === 1 ? 'point' : 'points';
-            categoryItem.textContent = `${categoryName}: ${totalPoints} total ${pointWord}`;
-            
-            // Apply color styling
-            categoryItem.style.borderLeftColor = color.border;
-            categoryItem.style.backgroundColor = color.bg;
+            const categorySummary = document.createElement('div');
+            const categoryNameElement = document.createElement('span');
+            const categoryPointsElement = document.createElement('span');
+
+            categorySummary.className = 'category-summary';
+            categoryNameElement.className = 'category-name';
+            categoryPointsElement.className = 'category-points';
+            categoryNameElement.textContent = categoryName;
+            categoryPointsElement.textContent = `${totalPoints} ${pointWord}`;
+            categorySummary.append(categoryNameElement, categoryPointsElement);
+
+            // Apply the category color through one reusable theme hook.
+            categoryItem.style.setProperty('--category-color', color.border);
             categoryItem.setAttribute('data-category-id', categoryId);
+            categoryItem.appendChild(categorySummary);
             
             // Create nested list for habits (now aggregated)
             const habitsList = document.createElement('ul');
@@ -524,9 +844,14 @@ async function fetchAndDisplayLoggedPoints(date) {
                 const habitItem = document.createElement('li');
                 const habitPointWord = habitData.totalPoints === 1 ? 'point' : 'points';
                 const countDisplay = habitData.count > 1 ? ` (${habitData.count}x)` : '';
-                habitItem.textContent = `${habitName}${countDisplay} - ${habitData.totalPoints} ${habitPointWord}`;
-                // Subtle border color for habits matching category
-                habitItem.style.borderLeftColor = color.border;
+                const habitNameElement = document.createElement('span');
+                const habitPointsElement = document.createElement('span');
+
+                habitNameElement.className = 'habit-name-label';
+                habitPointsElement.className = 'habit-points-label';
+                habitNameElement.textContent = `${habitName}${countDisplay}`;
+                habitPointsElement.textContent = `${habitData.totalPoints} ${habitPointWord}`;
+                habitItem.append(habitNameElement, habitPointsElement);
                 habitsList.appendChild(habitItem);
             });
             
@@ -539,16 +864,16 @@ async function fetchAndDisplayLoggedPoints(date) {
         for (const categoryId in habitsByCategory) {
             categoryPoints[categoryId] = habitsByCategory[categoryId].totalPoints;
         }
+        listElement.setAttribute('aria-busy', 'false');
         renderPointsChart(categoryPoints);
     } else {
         // No points logged - update badge to show 0
         totalBadge.textContent = '0 points';
 
-        if (date === today) {
-            listElement.innerHTML = '<li>No points earned today.</li>';
-        } else {
-            listElement.innerHTML = `<li>No points earned on ${dateString}.</li>`;
-        }
+        const emptyMessage = date === today
+            ? 'Nothing logged yet today. Your next small win starts here.'
+            : `Nothing was logged on ${dateString}.`;
+        setContainerMessage(listElement, emptyMessage);
 
         // Render chart with all categories at 0 points
         renderPointsChart({});
@@ -594,7 +919,7 @@ async function fetchAndDisplayProgress(currentDate) {
     
     if (error) {
         console.error('Error fetching progress data:', error);
-        progressSummary.innerHTML = `<p>Error loading progress: ${error.message}</p>`;
+        setContainerMessage(progressSummary, `We couldn't load monthly progress. ${error.message}`, 'error');
         return;
     }
     
@@ -616,15 +941,34 @@ async function fetchAndDisplayProgress(currentDate) {
         });
     }
     
-    // Build the HTML for display
+    // Build the monthly metric without interpolating data into HTML.
     const pointWord = totalPoints === 1 ? 'point' : 'points';
-    let html = `
-        <p>Total Points Earned:</p>
-        <div class="total-points">${totalPoints}</div>
-        <p class="date-range">${monthYearDisplay} (up to previous day)</p>
-    `;
-    
-    progressSummary.innerHTML = html;
+    const metricCopy = document.createElement('div');
+    const metricLabel = document.createElement('span');
+    const valueRow = document.createElement('div');
+    const metricValue = document.createElement('strong');
+    const metricUnit = document.createElement('span');
+    const dateRange = document.createElement('p');
+
+    metricCopy.className = 'metric-copy';
+    metricLabel.className = 'metric-label';
+    valueRow.className = 'metric-value-row';
+    metricValue.className = 'total-points';
+    metricUnit.className = 'metric-unit';
+    dateRange.className = 'date-range';
+
+    metricLabel.textContent = 'Points earned';
+    metricValue.textContent = totalPoints;
+    metricUnit.textContent = pointWord;
+    dateRange.textContent = currentDateObj.getDate() === 1
+        ? `${monthYearDisplay} has just begun.`
+        : `${monthYearDisplay}, through the previous day.`;
+
+    valueRow.append(metricValue, metricUnit);
+    metricCopy.append(metricLabel, valueRow);
+    progressSummary.replaceChildren(metricCopy, dateRange);
+    progressSummary.removeAttribute('role');
+    progressSummary.setAttribute('aria-busy', 'false');
     
     // Render the horizontal bar chart
     renderProgressChart(categoryPoints);
@@ -636,35 +980,52 @@ async function fetchAndDisplayProgress(currentDate) {
  */
 function renderProgressChart(categoryPoints) {
     const canvas = document.getElementById('progress_chart');
-    
+
     if (!canvas) {
         console.error('Progress chart canvas element not found');
         return;
     }
-    
-    // Sort categories by points (descending)
-    const sortedCategories = Object.entries(categoryPoints).sort((a, b) => b[1] - a[1]);
-    
+
+    // Start with every category, then place categories with earned points first.
+    const sortedCategories = Object.keys(state.categories)
+        .map(categoryId => [categoryId, categoryPoints[categoryId] || 0])
+        .sort((a, b) => b[1] - a[1]);
+
     const labels = [];
     const data = [];
     const backgroundColors = [];
     const borderColors = [];
-    
+
     sortedCategories.forEach(([categoryId, points]) => {
         const categoryName = state.categories[categoryId];
         const color = getCategoryColor(categoryId);
-        
+
         labels.push(categoryName);
         data.push(points);
         backgroundColors.push(color.bg);
         borderColors.push(color.border);
     });
-    
+
+    const chartDescription = document.getElementById('progress_chart_description');
+    if (chartDescription) {
+        chartDescription.textContent = labels.length
+            ? labels.map((label, index) => `${label}: ${data[index]} ${data[index] === 1 ? 'point' : 'points'}`).join('. ')
+            : 'No category points have been earned in this period yet.';
+    }
+
     // Destroy existing chart if it exists
     if (progressChart) {
         progressChart.destroy();
     }
-    
+
+    const textColor = getThemeValue('--text-secondary', '#9ea8b5');
+    const subtleColor = getThemeValue('--text-subtle', '#6f7a89');
+    const surfaceColor = getThemeValue('--surface-raised', '#171f2a');
+    const chartBorderColor = getThemeValue('--border-strong', 'rgba(255, 255, 255, 0.14)');
+    const fontFamily = getThemeValue('--font-body', 'sans-serif');
+    const isCompact = window.matchMedia('(max-width: 640px)').matches;
+    sizeCategoryChart(canvas, labels.length, isCompact, isCompact ? 265 : 285);
+
     // Create new horizontal bar chart
     const ctx = canvas.getContext('2d');
     progressChart = new Chart(ctx, {
@@ -677,32 +1038,64 @@ function renderProgressChart(categoryPoints) {
                 data: data,
                 backgroundColor: backgroundColors,
                 borderColor: borderColors,
-                borderWidth: 2
+                borderWidth: 1.5,
+                borderRadius: 9,
+                borderSkipped: false,
+                maxBarThickness: isCompact ? 26 : 30
             }]
         },
         options: {
             indexAxis: 'y', // This makes it horizontal
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
+            },
+            layout: {
+                padding: {
+                    right: isCompact ? 18 : 28
+                }
+            },
             scales: {
                 x: {
                     beginAtZero: true,
                     grace: '10%',
                     ticks: {
                         stepSize: 1,
+                        color: subtleColor,
+                        padding: 8,
                         font: {
-                            size: 12
+                            family: fontFamily,
+                            size: 11,
+                            weight: 600
                         }
                     },
+                    border: {
+                        display: false
+                    },
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(255, 255, 255, 0.06)',
+                        drawTicks: false
                     }
                 },
                 y: {
                     ticks: {
+                        color: textColor,
+                        autoSkip: false,
+                        padding: 9,
                         font: {
-                            size: 12
+                            family: fontFamily,
+                            size: isCompact ? 10 : 11,
+                            weight: 600
+                        },
+                        callback: function(value) {
+                            const label = this.getLabelForValue(value);
+                            const maxLength = isCompact ? 12 : 18;
+                            return label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
                         }
+                    },
+                    border: {
+                        display: false
                     },
                     grid: {
                         display: false
@@ -714,13 +1107,20 @@ function renderProgressChart(categoryPoints) {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: surfaceColor,
+                    borderColor: chartBorderColor,
+                    borderWidth: 1,
                     padding: 12,
+                    displayColors: false,
+                    titleColor: getThemeValue('--text-primary', '#f4f7f2'),
+                    bodyColor: textColor,
                     titleFont: {
-                        size: 14
+                        family: fontFamily,
+                        size: 13
                     },
                     bodyFont: {
-                        size: 13
+                        family: fontFamily,
+                        size: 12
                     },
                     callbacks: {
                         label: function(context) {
@@ -736,10 +1136,15 @@ function renderProgressChart(categoryPoints) {
                         return value;
                     },
                     font: {
-                        weight: 'bold',
-                        size: 12
+                        family: fontFamily,
+                        weight: 700,
+                        size: 11
                     },
-                    color: '#ffffff'
+                    color: function(context) {
+                        return context.dataset.data[context.dataIndex] === 0
+                            ? subtleColor
+                            : borderColors[context.dataIndex];
+                    }
                 }
             }
         }
@@ -781,7 +1186,7 @@ async function fetchAndDisplayTopHabits(currentDate) {
 
     if (error) {
         console.error('Error fetching top habits data:', error);
-        topHabitsList.innerHTML = `<p>Error loading top habits: ${error.message}</p>`;
+        setContainerMessage(topHabitsList, `We couldn't load your top habits. ${error.message}`, 'error');
         return;
     }
 
@@ -811,23 +1216,31 @@ async function fetchAndDisplayTopHabits(currentDate) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-    // Build the HTML for display
+    // Build the ranked list with text nodes so habit names remain safe.
     if (sortedHabits.length > 0) {
-        let html = '<ol>';
+        const rankedList = document.createElement('ol');
+
         sortedHabits.forEach(habit => {
             const countWord = habit.count === 1 ? 'time' : 'times';
             const color = getCategoryColor(habit.category);
-            html += `
-                <li style="border-left-color: ${color.border}; background-color: ${color.bg};">
-                    <span class="habit-name">${habit.name}</span>
-                    <span class="habit-count">${habit.count} ${countWord}</span>
-                </li>
-            `;
+            const habitItem = document.createElement('li');
+            const habitName = document.createElement('span');
+            const habitCount = document.createElement('span');
+
+            habitItem.style.setProperty('--category-color', color.border);
+            habitName.className = 'habit-name';
+            habitCount.className = 'habit-count';
+            habitName.textContent = habit.name;
+            habitCount.textContent = `${habit.count} ${countWord}`;
+            habitItem.append(habitName, habitCount);
+            rankedList.appendChild(habitItem);
         });
-        html += '</ol>';
-        topHabitsList.innerHTML = html;
+
+        topHabitsList.replaceChildren(rankedList);
+        topHabitsList.removeAttribute('role');
+        topHabitsList.setAttribute('aria-busy', 'false');
     } else {
-        topHabitsList.innerHTML = '<p>No habits logged this month yet.</p>';
+        setContainerMessage(topHabitsList, 'No monthly streak leaders yet. Every check-in can take the first spot.');
     }
 }
 
@@ -846,26 +1259,69 @@ async function loadAllHabits() {
 
     if (data) {
         state.habits = data;
-        console.log('Loaded habits:', state.habits);
     }
+}
+
+/**
+ * Return a valid whole-number quantity, defaulting invalid entries to one.
+ */
+function getHabitQuantity() {
+    const quantityInput = document.getElementById('habit_quantity');
+    const quantity = Number(quantityInput.value);
+
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+        quantityInput.value = '1';
+        return 1;
+    }
+
+    if (quantity > MAX_HABIT_QUANTITY) {
+        quantityInput.value = String(MAX_HABIT_QUANTITY);
+        return MAX_HABIT_QUANTITY;
+    }
+
+    return quantity;
+}
+
+/**
+ * Update the quantity field and keep the primary action clear.
+ */
+function setHabitQuantity(quantity) {
+    const quantityInput = document.getElementById('habit_quantity');
+    const safeQuantity = Number.isSafeInteger(quantity) && quantity > 0
+        ? Math.min(quantity, MAX_HABIT_QUANTITY)
+        : 1;
+
+    quantityInput.value = String(safeQuantity);
+    updateRecordButtonLabel(safeQuantity);
+}
+
+function updateRecordButtonLabel(quantity = getHabitQuantity()) {
+    const recordButton = document.getElementById('record_habit_button');
+    const label = recordButton.querySelector('span:first-child');
+
+    label.textContent = quantity === 1 ? 'Log this habit' : `Log ${quantity} times`;
 }
 
 /**
  * Handle category selection - populate habit dropdown with habits from selected category
  */
 function onCategorySelected(categoryId) {
-    console.log('Category selected:', categoryId);
-    console.log('Category name:', state.categories[categoryId]);
-    
     const habitDropdown = document.getElementById('habit_dropdown');
     const habitSelectionContainer = document.getElementById('habit_selection_container');
+    const quantitySelectionContainer = document.getElementById('quantity_selection_container');
     const recordButtonContainer = document.getElementById('record_button_container');
     
-    // Clear existing options except the first placeholder
-    habitDropdown.innerHTML = '<option value="">-- Choose a habit --</option>';
-    
-    // Hide record button when category changes
-    recordButtonContainer.style.display = 'none';
+    // Reset the later steps whenever the category changes.
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Choose a habit';
+    habitDropdown.replaceChildren(placeholder);
+    habitSelectionContainer.hidden = true;
+    quantitySelectionContainer.hidden = true;
+    recordButtonContainer.hidden = true;
+    setHabitQuantity(1);
+
+    if (!categoryId) return;
     
     // Filter habits by selected category
     const categoryHabits = state.habits.filter(habit => habit.category == categoryId);
@@ -880,11 +1336,10 @@ function onCategorySelected(categoryId) {
         });
         
         // Show the habit selection dropdown
-        habitSelectionContainer.style.display = 'block';
+        habitSelectionContainer.hidden = false;
     } else {
         // Hide the habit selection if no habits found
-        habitSelectionContainer.style.display = 'none';
-        console.log('No habits found for category:', categoryId);
+        habitSelectionContainer.hidden = true;
     }
 }
 
@@ -892,17 +1347,12 @@ function onCategorySelected(categoryId) {
  * Handle habit selection - show the record button
  */
 function onHabitSelected(habitId) {
-    console.log('Habit selected:', habitId);
-    
+    const quantitySelectionContainer = document.getElementById('quantity_selection_container');
     const recordButtonContainer = document.getElementById('record_button_container');
     
-    if (habitId) {
-        // Show the record button
-        recordButtonContainer.style.display = 'block';
-    } else {
-        // Hide if no habit is selected
-        recordButtonContainer.style.display = 'none';
-    }
+    quantitySelectionContainer.hidden = !habitId;
+    recordButtonContainer.hidden = !habitId;
+    setHabitQuantity(1);
 }
 
 /**
@@ -910,12 +1360,15 @@ function onHabitSelected(habitId) {
  */
 async function onRecordHabitClicked() {
     const habitDropdown = document.getElementById('habit_dropdown');
+    const quantityInput = document.getElementById('habit_quantity');
+    const decreaseQuantityButton = document.getElementById('decrease_quantity_button');
+    const increaseQuantityButton = document.getElementById('increase_quantity_button');
     const recordButton = document.getElementById('record_habit_button');
     
     const selectedHabitId = habitDropdown.value;
     
     if (!selectedHabitId) {
-        alert('Please select a habit first');
+        showToast('Choose a habit before logging it.', 'error');
         return;
     }
     
@@ -923,58 +1376,72 @@ async function onRecordHabitClicked() {
     const selectedHabit = state.habits.find(habit => habit.id == selectedHabitId);
     
     if (!selectedHabit) {
-        alert('Habit not found');
+        showToast('That habit could not be found. Try selecting it again.', 'error');
         return;
     }
-    
-    console.log('Recording habit:', selectedHabit);
+
+    const quantity = getHabitQuantity();
     
     // Disable button to prevent double clicks
     recordButton.disabled = true;
-    recordButton.textContent = 'Recording...';
+    recordButton.setAttribute('aria-busy', 'true');
+    recordButton.querySelector('span:first-child').textContent = quantity === 1 ? 'Logging…' : `Logging ${quantity}…`;
+    quantityInput.disabled = true;
+    decreaseQuantityButton.disabled = true;
+    increaseQuantityButton.disabled = true;
     
     try {
         // Use the selected date instead of always using today
         const localDate = state.selectedDate;
         
-        // Insert the habit log entry
+        // Insert every completion in one request so the existing analytics remain accurate.
+        const logEntries = Array.from({ length: quantity }, () => ({
+            date: localDate,
+            habit: selectedHabitId
+        }));
         const { data, error } = await supabase
             .from(CONFIG.tables.habitLog)
-            .insert({
-                date: localDate,
-                habit: selectedHabitId
-            })
+            .insert(logEntries)
             .select();
         
         if (error) {
             console.error('Error recording habit:', error);
-            alert(`Error recording habit: ${error.message}`);
+            showToast(`We couldn't log that habit. ${error.message}`, 'error');
             return;
         }
         
-        console.log('Habit recorded successfully:', data);
-
         // Refresh the logged points display for the selected date
-        await fetchAndDisplayLoggedPoints(state.selectedDate);
-        await fetchAndDisplayProgress(state.selectedDate);
-        await fetchAndDisplayTopHabits(state.selectedDate);
+        await Promise.all([
+            fetchAndDisplayLoggedPoints(state.selectedDate),
+            fetchAndDisplayProgress(state.selectedDate),
+            fetchAndDisplayTopHabits(state.selectedDate)
+        ]);
 
         // Reset the form
         document.getElementById('category_dropdown').value = '';
         habitDropdown.value = '';
-        document.getElementById('habit_selection_container').style.display = 'none';
-        document.getElementById('record_button_container').style.display = 'none';
+        document.getElementById('habit_selection_container').hidden = true;
+        document.getElementById('quantity_selection_container').hidden = true;
+        document.getElementById('record_button_container').hidden = true;
+        setHabitQuantity(1);
         
         // Show success message
-        alert(`Habit "${selectedHabit.name}" recorded successfully! (${selectedHabit.default_points} points)`);
+        const totalPoints = Number(selectedHabit.default_points) * quantity;
+        const pointWord = totalPoints === 1 ? 'point' : 'points';
+        const quantityLabel = quantity === 1 ? selectedHabit.name : `${selectedHabit.name} ×${quantity}`;
+        showToast(`${quantityLabel} logged · +${totalPoints} ${pointWord}`);
         
     } catch (err) {
         console.error('Unexpected error:', err);
-        alert('An unexpected error occurred');
+        showToast('Something unexpected happened. Please try again.', 'error');
     } finally {
         // Re-enable button
         recordButton.disabled = false;
-        recordButton.textContent = 'Record Habit';
+        recordButton.removeAttribute('aria-busy');
+        quantityInput.disabled = false;
+        decreaseQuantityButton.disabled = false;
+        increaseQuantityButton.disabled = false;
+        updateRecordButtonLabel();
     }
 }
 
@@ -984,21 +1451,38 @@ async function onRecordHabitClicked() {
 function initializeEventListeners() {
     const categoryDropdown = document.getElementById('category_dropdown');
     const habitDropdown = document.getElementById('habit_dropdown');
+    const quantityInput = document.getElementById('habit_quantity');
+    const decreaseQuantityButton = document.getElementById('decrease_quantity_button');
+    const increaseQuantityButton = document.getElementById('increase_quantity_button');
     const recordButton = document.getElementById('record_habit_button');
     
     // Add event listener for category selection
     categoryDropdown.addEventListener('change', function(event) {
         const selectedCategoryId = event.target.value;
-        
-        if (selectedCategoryId) {
-            onCategorySelected(selectedCategoryId);
-        }
+        onCategorySelected(selectedCategoryId);
     });
     
     // Add event listener for habit selection
     habitDropdown.addEventListener('change', function(event) {
         const selectedHabitId = event.target.value;
         onHabitSelected(selectedHabitId);
+    });
+
+    // Keep amount changes fast to use with repeated daily check-ins.
+    quantityInput.addEventListener('input', function() {
+        setHabitQuantity(getHabitQuantity());
+    });
+
+    quantityInput.addEventListener('change', function() {
+        setHabitQuantity(getHabitQuantity());
+    });
+
+    decreaseQuantityButton.addEventListener('click', function() {
+        setHabitQuantity(Math.max(1, getHabitQuantity() - 1));
+    });
+
+    increaseQuantityButton.addEventListener('click', function() {
+        setHabitQuantity(getHabitQuantity() + 1);
     });
     
     // Add event listener for record button
@@ -1010,14 +1494,14 @@ function initializeEventListeners() {
 // Initialize application on page load
 (async function initializeApp() {
     // First, check and load configuration
-    if (!initializeConfig()) {
-        document.body.innerHTML = '<div style="padding: 20px; text-align: center;"><h1>Configuration Required</h1><p>Please refresh the page to configure the application.</p></div>';
+    if (!(await initializeConfig())) {
+        renderFatalState('Configuration required', 'Refresh the page when you are ready to finish setting up your habit tracker.');
         return;
     }
     
     // Initialize Supabase with the loaded config
     if (!initializeSupabase()) {
-        document.body.innerHTML = '<div style="padding: 20px; text-align: center;"><h1>Configuration Error</h1><p>Invalid configuration. Please refresh and try again.</p></div>';
+        renderFatalState('Configuration error', 'The saved setup is invalid. Refresh the page and try again.');
         return;
     }
     

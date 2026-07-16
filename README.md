@@ -5,13 +5,14 @@ A web application for tracking daily habits and monitoring progress over time. B
 ## Features
 
 - **Habit Logging**: Record daily habit completions organized by custom categories
+- **Batch Logging**: Record several completions of the same habit in one check-in
 - **Point System**: Each habit has a configurable point value to track your progress
 - **Date Navigation**: View and log habits for any date, with easy navigation between days
 - **Visual Analytics**:
   - Daily bar chart showing points earned per category
   - Monthly progress chart displaying cumulative performance
 - **Secure Authentication**: Email-based magic link login powered by Supabase
-- **Responsive Design**: Clean, dark-themed interface optimized for desktop use
+- **Responsive Design**: Modern dark dashboard designed for mobile, tablet, and desktop use
 
 ## Tech Stack
 
