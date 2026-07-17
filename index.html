@@ -4,201 +4,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#080b10">
-    <meta name="description" content="A personal habit tracker for logging daily wins and seeing progress over time.">
-    <title>Habit Tracker — Daily Momentum</title>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f2eb">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141210">
+    <meta name="description" content="Habit Tracker 2.0 — a personal ledger for daily wins, points, and monthly momentum.">
+    <title>Habit Tracker 2.0</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23bc3f11'/%3E%3Cpath d='M9.5 17l4.5 4.5L22.5 11' fill='none' stroke='%23fff7f2' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <script>
+        (function () {
+            var theme = 'light';
+            try {
+                theme = localStorage.getItem('habitTrackerTheme')
+                    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            } catch (error) {
+                theme = 'light';
+            }
+            document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <header class="site-header">
-        <div class="header-row">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="topbar">
+        <div class="topbar-inner">
             <div class="brand">
                 <span class="brand-mark" aria-hidden="true"></span>
-                <span class="brand-copy">
-                    <strong>Habit Tracker</strong>
-                </span>
+                <span class="brand-name">Habit&nbsp;Tracker</span>
+                <span class="version-pill" aria-label="Version 2.0">2.0</span>
+            </div>
+            <div class="topbar-actions">
+                <button type="button" id="theme_toggle" class="icon-button" aria-label="Switch theme">
+                    <svg class="icon-sun" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="4.2"></circle>
+                        <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19"></path>
+                    </svg>
+                    <svg class="icon-moon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.2 14.5A8.3 8.3 0 0 1 9.5 3.8a8.3 8.3 0 1 0 10.7 10.7z"></path>
+                    </svg>
+                </button>
+                <button type="button" id="auth_button" class="ghost-button" hidden>Sign out</button>
             </div>
         </div>
     </header>
 
-    <main class="app-shell">
-        <section class="active-date-card" aria-labelledby="active_date_label">
-            <div class="active-date-copy">
-                <p class="eyebrow">Active day</p>
-                <h2 id="active_date_label">Today</h2>
-                <p>Everything you log is saved to this date.</p>
+    <main id="main" class="shell">
+        <section class="day-hero" aria-labelledby="selected_day_label">
+            <div class="day-hero-copy">
+                <p class="kicker">Active day</p>
+                <h1 id="selected_day_label">Today</h1>
+                <p class="day-hero-sub" id="selected_day_sub">Pick a day — everything you log lands on it.</p>
             </div>
-
-            <div class="date-control">
-                <label for="date_picker">Choose a day</label>
-                <div class="date-navigation">
-                    <button type="button" id="prev_date_button" class="date-nav-button" aria-label="Previous day">
-                        <span aria-hidden="true">←</span>
+            <div class="day-controls">
+                <div class="week-row">
+                    <button type="button" id="prev_week_button" class="icon-button" aria-label="Previous week">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6l-6 6 6 6"></path></svg>
                     </button>
+                    <div id="week_strip" class="week-strip" role="group" aria-label="Days of the selected week"></div>
+                    <button type="button" id="next_week_button" class="icon-button" aria-label="Next week">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"></path></svg>
+                    </button>
+                </div>
+                <div class="day-tools">
+                    <label class="visually-hidden" for="date_picker">Jump to a date</label>
                     <input type="date" id="date_picker">
-                    <button type="button" id="next_date_button" class="date-nav-button" aria-label="Next day">
-                        <span aria-hidden="true">→</span>
-                    </button>
-                    <button type="button" id="today_button" class="today-button">Jump to today</button>
+                    <button type="button" id="today_button" class="ghost-button">Today</button>
                 </div>
             </div>
         </section>
 
-        <div class="dashboard">
-            <section id="add_habit_section" class="panel quick-log-panel" aria-labelledby="log_habit_heading">
-                <div class="panel-header">
+        <div class="board">
+            <section class="card card--log" aria-labelledby="log_heading">
+                <header class="card-header">
                     <div>
-                        <p class="panel-kicker">Quick check-in</p>
-                        <h2 id="log_habit_heading">Log a habit</h2>
+                        <p class="kicker">Quick log</p>
+                        <h2 id="log_heading">Log a habit</h2>
                     </div>
-                    <span class="panel-index" aria-hidden="true">01</span>
+                    <span class="log-target" id="log_target_note">Saving to today</span>
+                </header>
+                <div class="log-filters">
+                    <div class="recent-block" id="recent_block" hidden>
+                        <p class="recent-label">Recent</p>
+                        <div id="recent_habits" class="recent-row" role="group" aria-label="Recently logged habits"></div>
+                    </div>
+                    <input type="search" id="habit_search" class="search-input" placeholder="Search habits…" autocomplete="off" aria-label="Search habits">
+                    <div id="category_chips" class="chip-row" role="group" aria-label="Filter habits by category"></div>
                 </div>
-                <p class="panel-intro">Choose what you completed and add it to your active day.</p>
-
-                <div class="logging-context">
-                    <span class="logging-dot" aria-hidden="true"></span>
-                    Saving to <strong id="log_date_label">today</strong>
+                <div id="habit_grid" class="habit-grid" aria-live="polite" aria-busy="true">
+                    <p class="state-message">Loading your habits…</p>
                 </div>
-
-                <form class="habit-form" onsubmit="return false;">
-                    <div class="field-group">
-                        <label for="category_dropdown">
-                            <span class="field-step" aria-hidden="true">1</span>
-                            Category
-                        </label>
-                        <div class="select-shell">
-                            <select id="category_dropdown">
-                                <option value="">Choose a category</option>
-                            </select>
+                <div id="log_composer" class="composer" hidden>
+                    <div class="composer-copy">
+                        <span id="composer_habit_name" class="composer-name"></span>
+                        <span id="composer_meta" class="composer-meta"></span>
+                    </div>
+                    <div class="composer-actions">
+                        <div class="stepper">
+                            <button type="button" id="decrease_quantity_button" class="stepper-button" aria-label="Decrease amount">−</button>
+                            <input type="number" id="habit_quantity" value="1" min="1" max="99" step="1" inputmode="numeric" aria-label="Times to log">
+                            <button type="button" id="increase_quantity_button" class="stepper-button" aria-label="Increase amount">+</button>
                         </div>
+                        <button type="button" id="record_habit_button" class="primary-button">Log habit</button>
                     </div>
-
-                    <div id="habit_selection_container" class="field-group reveal-step" hidden>
-                        <label for="habit_dropdown">
-                            <span class="field-step" aria-hidden="true">2</span>
-                            Habit
-                        </label>
-                        <div class="select-shell">
-                            <select id="habit_dropdown">
-                                <option value="">Choose a habit</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="quantity_selection_container" class="field-group reveal-step" hidden>
-                        <label for="habit_quantity">
-                            <span class="field-step" aria-hidden="true">3</span>
-                            Amount to log
-                        </label>
-                        <div class="quantity-control">
-                            <button type="button" id="decrease_quantity_button" class="quantity-button" aria-label="Decrease amount">−</button>
-                            <input type="number" id="habit_quantity" value="1" min="1" max="99" step="1" inputmode="numeric" aria-describedby="quantity_hint">
-                            <button type="button" id="increase_quantity_button" class="quantity-button" aria-label="Increase amount">+</button>
-                        </div>
-                        <p id="quantity_hint" class="field-hint">Leave this at 1 for a single completion (up to 99 at once).</p>
-                    </div>
-
-                    <div id="record_button_container" class="reveal-step" hidden>
-                        <button type="button" id="record_habit_button" class="primary-button">
-                            <span>Log this habit</span>
-                            <span aria-hidden="true">↗</span>
-                        </button>
-                    </div>
-                </form>
+                </div>
             </section>
 
-            <section id="today_section" class="panel daily-panel" aria-labelledby="points_heading">
-                <div class="panel-header points-header">
+            <section class="card card--day" aria-labelledby="day_heading">
+                <header class="card-header">
                     <div>
-                        <p class="panel-kicker">Daily score</p>
-                        <h2 id="points_heading">Today's activity</h2>
+                        <p class="kicker">Daily score</p>
+                        <h2 id="day_heading">Today's activity</h2>
                     </div>
-                    <div id="total_points_badge" class="total-points-badge" role="status" aria-live="polite">0 points</div>
+                    <span id="total_points_badge" class="points-badge" role="status" aria-live="polite">0 pts</span>
+                </header>
+                <div class="stat-row">
+                    <div class="stat">
+                        <span class="stat-label">Points</span>
+                        <strong id="stat_points" class="stat-value">0</strong>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Entries</span>
+                        <strong id="stat_entries" class="stat-value">0</strong>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Categories</span>
+                        <strong id="stat_categories" class="stat-value">0</strong>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Day streak</span>
+                        <strong id="stat_streak" class="stat-value">–</strong>
+                    </div>
                 </div>
-
-                <div id="chart_container" class="chart-block">
-                    <div class="block-heading">
-                        <div>
-                            <h3>Points by category</h3>
-                            <p>All categories, including those at zero.</p>
-                        </div>
-                        <span class="chart-key"><span aria-hidden="true"></span> Points</span>
-                    </div>
-                    <div class="chart-canvas chart-canvas--daily">
-                        <canvas id="points_chart" role="img" aria-label="Daily points by category" aria-describedby="points_chart_description"></canvas>
+                <div class="block">
+                    <h3 class="block-title">Points by category</h3>
+                    <div class="chart-canvas chart-canvas--day">
+                        <canvas id="points_chart" role="img" aria-label="Points by category for the selected day" aria-describedby="points_chart_description"></canvas>
                     </div>
                     <p id="points_chart_description" class="visually-hidden">Daily category points are loading.</p>
                 </div>
-
-                <div class="activity-block">
-                    <div class="block-heading">
-                        <div>
-                            <h3>Activity details</h3>
-                            <p>Your completed habits, grouped by category.</p>
-                        </div>
-                    </div>
-                    <ul id="logged_points_list" aria-live="polite" aria-busy="true">
-                        <li class="state-message">Loading today's activity…</li>
+                <div class="block">
+                    <h3 class="block-title">Logged habits</h3>
+                    <ul id="logged_points_list" class="activity-list" aria-live="polite" aria-busy="true">
+                        <li class="state-message">Loading the day's activity…</li>
                     </ul>
                 </div>
             </section>
 
-            <section id="progress_section" class="panel progress-panel" aria-labelledby="progress_heading">
-                <div class="panel-header">
+            <section class="card card--month" aria-labelledby="month_heading">
+                <header class="card-header">
                     <div>
-                        <p id="progress_period" class="panel-kicker">Selected month</p>
-                        <h2 id="progress_heading">Month at a glance</h2>
+                        <p class="kicker" id="progress_period">This month</p>
+                        <h2 id="month_heading">Month so far</h2>
                     </div>
-                    <span class="panel-index" aria-hidden="true">02</span>
-                </div>
-
-                <div id="progress_summary" aria-live="polite" aria-busy="true">
+                </header>
+                <div id="month_summary" class="month-summary" aria-live="polite" aria-busy="true">
                     <p class="state-message">Loading monthly progress…</p>
                 </div>
-
-                <div id="progress_chart_container" class="chart-block">
-                    <div class="block-heading">
-                        <div>
-                            <h3>Category balance</h3>
-                            <p>All categories through the previous day.</p>
-                        </div>
+                <div class="block">
+                    <h3 class="block-title">Points per day</h3>
+                    <div class="chart-canvas chart-canvas--trend">
+                        <canvas id="trend_chart" role="img" aria-label="Points per day this month" aria-describedby="trend_chart_description"></canvas>
                     </div>
-                    <div class="chart-canvas chart-canvas--progress">
-                        <canvas id="progress_chart" role="img" aria-label="Monthly progress by category" aria-describedby="progress_chart_description"></canvas>
+                    <p id="trend_chart_description" class="visually-hidden">The daily points trend is loading.</p>
+                </div>
+                <div class="block">
+                    <h3 class="block-title">Category balance</h3>
+                    <div class="chart-canvas chart-canvas--balance">
+                        <canvas id="progress_chart" role="img" aria-label="Monthly points by category" aria-describedby="progress_chart_description"></canvas>
                     </div>
-                    <p id="progress_chart_description" class="visually-hidden">Monthly category progress is loading.</p>
+                    <p id="progress_chart_description" class="visually-hidden">Monthly category totals are loading.</p>
                 </div>
             </section>
 
-            <section id="top_habits_section" class="panel top-habits-panel" aria-labelledby="top_habits_heading">
-                <div class="panel-header">
+            <section class="card card--top" aria-labelledby="top_heading">
+                <header class="card-header">
                     <div>
-                        <p id="top_habits_period" class="panel-kicker">Selected month</p>
-                        <h2 id="top_habits_heading">Most consistent</h2>
+                        <p class="kicker" id="top_habits_period">This month</p>
+                        <h2 id="top_heading">Most consistent</h2>
                     </div>
-                    <span class="panel-index" aria-hidden="true">03</span>
-                </div>
-                <p class="panel-intro">The habits you returned to most often.</p>
-
-                <div id="top_habits_list" aria-live="polite" aria-busy="true">
+                </header>
+                <p class="card-intro">The habits you returned to most often.</p>
+                <div id="top_habits_list" class="top-list" aria-live="polite" aria-busy="true">
                     <p class="state-message">Loading top habits…</p>
                 </div>
             </section>
         </div>
     </main>
 
-    <footer id="disclaimer" class="site-footer">
+    <footer class="site-footer">
         <div>
             <strong>Keep showing up.</strong>
             <p>Small actions, made visible.</p>
         </div>
         <div class="footer-meta">
-            <span>Built with Kilo-Code, Anthropic Claude Sonnet 4.5, and OpenAI GPT 5.6</span>
-            <button type="button" id="reconfigure_button" class="quiet-button" onclick="reconfigureApp()">Redo setup</button>
+            <span>Vibe-coded with help from Anthropic, OpenAI, and Kilo-Code</span>
+            <button type="button" id="reconfigure_button" class="ghost-button ghost-button--small">Redo setup</button>
         </div>
     </footer>
 

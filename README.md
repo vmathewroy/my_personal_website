@@ -1,18 +1,24 @@
-# Daily Habit Tracker
+# Daily Habit Tracker 2.0
 
-A web application for tracking daily habits and monitoring progress over time. Built with vanilla JavaScript and Supabase for database management and authentication.
+A web application for tracking daily habits and monitoring progress over time. Built with vanilla JavaScript and Supabase for database management and authentication. Version 2.0 is a ground-up redesign with an editorial paper-and-ink look, light and dark themes, and a faster logging flow.
 
 ## Features
 
-- **Habit Logging**: Record daily habit completions organized by custom categories
-- **Batch Logging**: Record several completions of the same habit in one check-in
+- **One-Tap Quick Log**: Search or filter habits by category chips, tap a habit, set a quantity, and log — no dropdown cascade
+- **Recent Habits Row**: Your most recently logged habits surface as one-tap pills at the top of the quick log
+- **Batch Logging**: Record several completions of the same habit in one check-in (up to 99)
+- **Undo & Per-Entry Delete**: Every log shows a toast with a one-click Undo, and any entry can be removed from the day's activity list
+- **Streaks**: A daily logging streak on the score card, plus per-habit streaks on the Most Consistent list
 - **Point System**: Each habit has a configurable point value to track your progress
-- **Date Navigation**: View and log habits for any date, with easy navigation between days
+- **Week Strip Navigation**: Tap any day in the visible week, page weeks with arrows, or jump with the date picker
 - **Visual Analytics**:
-  - Daily bar chart showing points earned per category
-  - Monthly progress chart displaying cumulative performance
-- **Secure Authentication**: Email-based magic link login powered by Supabase
-- **Responsive Design**: Modern dark dashboard designed for mobile, tablet, and desktop use
+  - Daily stat tiles (points, entries, categories, day streak) and a points-by-category chart
+  - Month-to-date total with a comparison against the same slice of last month
+  - A points-per-day trend line and a category balance chart
+  - "Most consistent" ranking of the habits you repeated most this month
+- **Light & Dark Themes**: Follows your system preference with a manual toggle that persists
+- **Secure Authentication**: Email-based magic link login powered by Supabase, with sign in/out in the header
+- **Responsive Design**: Designed for mobile, tablet, and desktop use
 
 ## Tech Stack
 
