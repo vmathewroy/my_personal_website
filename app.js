@@ -3,23 +3,15 @@
 // ---------------------------------------------------------------------------
 
 const SUPABASE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/+esm';
-const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-const CHART_DATALABELS_URL = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js';
 
 const CONFIG_STORAGE_KEY = 'habitTrackerConfig';
 const THEME_STORAGE_KEY = 'habitTrackerTheme';
 const MAX_HABIT_QUANTITY = 99;
 const RECENT_HABITS_LIMIT = 5;
-const LOG_QUERY_PAGE_SIZE = 1000;
-const STREAK_QUERY_ROW_LIMIT = 1000;
-const MAX_CHART_LOAD_ATTEMPTS = 2;
-// Streaks look back this many days from the selected date. The bounded query
-// keeps a very dense quantity history from delaying the rest of the dashboard.
-// If that cap is reached, streak values stay unavailable rather than reporting
-// a shortened streak as exact; the small buffer lets normal histories reuse a
-// complete cached range across nearby date changes.
+// Streaks look back this many days from the selected date. The query is
+// capped at 1000 rows (newest first), so very dense logs shorten the
+// effective window rather than erroring.
 const STREAK_WINDOW_DAYS = 120;
-const STREAK_CACHE_BUFFER_DAYS = 14;
 
 const CONFIG = {
     supabaseUrl: '',
@@ -46,25 +38,6 @@ const CATEGORY_PALETTE = [
     { light: '#eb6834', dark: '#d95926' }
 ];
 
-function createDataCache(userId = null) {
-    return {
-        userId,
-        dayRows: null,
-        dayKey: null,
-        monthRows: null,
-        monthKey: null,
-        streakRows: null,
-        streakKey: null,
-        prevMonthPoints: null,
-        monthRowsByKey: new Map(),
-        monthPointRowsByKey: new Map(),
-        streakWindow: null,
-        streakLoadPromise: null,
-        streakComplete: false,
-        version: 0
-    };
-}
-
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -79,18 +52,12 @@ const state = {
     searchTerm: '',
     selectedHabitId: null,
     lastLogIds: [],            // ids of the most recent insert, for Undo
-    lastLogDate: null,
-    cache: createDataCache()
+    cache: { dayRows: null, monthRows: null, streakRows: null, prevMonthPoints: null }
 };
 
 const charts = { day: null, trend: null, balance: null };
 let supabase;
 let toastTimer = null;
-let supabaseModulePromise = null;
-let chartLibraryPromise = null;
-let chartLibraryRequested = false;
-let chartObserver = null;
-let chartLoadAttempts = 0;
 
 // ---------------------------------------------------------------------------
 // Date helpers (all keys are YYYY-MM-DD via the en-CA locale)
@@ -124,15 +91,6 @@ function startOfWeekKey(key) {
 function monthStartKey(key) {
     const date = keyToDate(key);
     return dateToKey(new Date(date.getFullYear(), date.getMonth(), 1));
-}
-
-function monthEndKey(key) {
-    const date = keyToDate(key);
-    return dateToKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
-}
-
-function monthCacheKey(key) {
-    return key.slice(0, 7);
 }
 
 function formatKey(key, options) {
@@ -485,98 +443,6 @@ function getCategoryColor(categoryId) {
 }
 
 // ---------------------------------------------------------------------------
-// Deferred third-party libraries
-// ---------------------------------------------------------------------------
-
-function preloadSupabaseModule() {
-    if (!supabaseModulePromise) {
-        supabaseModulePromise = import(SUPABASE_MODULE_URL);
-    }
-    return supabaseModulePromise;
-}
-
-function loadExternalScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Could not load ${src}`));
-        document.head.appendChild(script);
-    });
-}
-
-function loadChartLibrary() {
-    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
-        return Promise.resolve();
-    }
-    if (chartLibraryPromise) return chartLibraryPromise;
-
-    chartLoadAttempts += 1;
-    const chartLoad = typeof Chart === 'undefined'
-        ? loadExternalScript(CHART_JS_URL)
-        : Promise.resolve();
-    chartLibraryPromise = chartLoad
-        .then(() => typeof ChartDataLabels === 'undefined'
-            ? loadExternalScript(CHART_DATALABELS_URL)
-            : undefined)
-        .then(() => {
-            if (typeof Chart === 'undefined' || typeof ChartDataLabels === 'undefined') {
-                throw new Error('Chart libraries loaded without their expected globals.');
-            }
-            // The data can arrive before the chart library. Re-render from the
-            // cached rows once it is ready rather than delaying the dashboard.
-            rerenderFromCache();
-        })
-        .catch(error => {
-            chartLibraryPromise = null;
-            chartLibraryRequested = false;
-            if (chartLoadAttempts < MAX_CHART_LOAD_ATTEMPTS) {
-                window.setTimeout(requestChartLibraryWhenVisible, 3000);
-            }
-            throw error;
-        });
-
-    return chartLibraryPromise;
-}
-
-function requestChartLibraryWhenVisible() {
-    if (chartLibraryRequested || (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined')) return;
-
-    const canvases = ['points_chart', 'trend_chart', 'progress_chart']
-        .map(id => document.getElementById(id))
-        .filter(Boolean);
-    if (!canvases.length) return;
-
-    chartLibraryRequested = true;
-    const beginLoading = () => {
-        chartObserver?.disconnect();
-        chartObserver = null;
-
-        const load = () => {
-            void loadChartLibrary().catch(error => {
-                console.error('Error loading chart libraries:', error);
-            });
-        };
-
-        if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(load, { timeout: 1200 });
-        } else {
-            window.setTimeout(load, 0);
-        }
-    };
-
-    if ('IntersectionObserver' in window) {
-        chartObserver = new IntersectionObserver(entries => {
-            if (entries.some(entry => entry.isIntersecting)) beginLoading();
-        }, { rootMargin: '240px 0px' });
-        canvases.forEach(canvas => chartObserver.observe(canvas));
-    } else {
-        beginLoading();
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Supabase client & auth
 // ---------------------------------------------------------------------------
 
@@ -588,7 +454,7 @@ async function initializeSupabase() {
     // Imported on demand so the page shell still renders if the CDN is
     // slow or unreachable — the failure then surfaces as a clear message.
     try {
-        const { createClient } = await preloadSupabaseModule();
+        const { createClient } = await import(SUPABASE_MODULE_URL);
         supabase = createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
         return true;
     } catch (error) {
@@ -605,57 +471,19 @@ function updateAuthButton() {
 }
 
 async function enterSignedInState(user) {
-    if (state.cache.userId !== user.id) resetDataCache(user.id);
     state.currentUser = user;
-    const cache = state.cache;
     updateAuthButton();
-    await Promise.all([loadCategories(cache), loadAllHabits(cache)]);
-    if (state.cache !== cache || state.currentUser?.id !== user.id) return;
-
+    await loadCategories();
+    await loadAllHabits();
     assignCategorySlots();
     renderCategoryChips();
     renderHabitGrid();
-    await refreshAllData({ background: true });
-    requestChartLibraryWhenVisible();
+    await refreshAllData();
 }
 
-function resetDataCache(userId = null) {
-    state.cache = createDataCache(userId);
-}
-
-function scheduleSupplementaryRefresh(dateKey, options) {
-    const refresh = () => {
-        if (!state.currentUser || state.selectedDate !== dateKey) return;
-        void Promise.all([
-            refreshMonth(dateKey, options),
-            refreshStreaks(dateKey, options)
-        ]);
-    };
-
-    if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(refresh, { timeout: 700 });
-    } else {
-        window.setTimeout(refresh, 0);
-    }
-}
-
-/**
- * Make the selected day's activity usable first. Monthly analytics and streaks
- * are secondary, so they refresh during the browser's next idle opportunity.
- */
-async function refreshAllData({ dateKey = state.selectedDate, force = false, background = true } = {}) {
-    await refreshDay(dateKey, { force });
-
-    const options = { force };
-    if (background) {
-        scheduleSupplementaryRefresh(dateKey, options);
-        return;
-    }
-
-    await Promise.all([
-        refreshMonth(dateKey, options),
-        refreshStreaks(dateKey, options)
-    ]);
+/** Refresh every data-driven view for the selected date. */
+function refreshAllData() {
+    return Promise.all([refreshDay(), refreshMonth(), refreshStreaks()]);
 }
 
 function renderSignedOutStates() {
@@ -685,9 +513,7 @@ async function signOut() {
     state.habits = [];
     state.categories = {};
     state.selectedHabitId = null;
-    state.lastLogIds = [];
-    state.lastLogDate = null;
-    resetDataCache();
+    state.cache = { dayRows: null, monthRows: null, streakRows: null, prevMonthPoints: null };
     updateComposer();
     updateAuthButton();
     renderSignedOutStates();
@@ -748,13 +574,6 @@ async function checkIfUserIsLoggedIn() {
         }
         if (event === 'SIGNED_OUT' && state.currentUser) {
             state.currentUser = null;
-            state.habits = [];
-            state.categories = {};
-            state.selectedHabitId = null;
-            state.lastLogIds = [];
-            state.lastLogDate = null;
-            resetDataCache();
-            updateComposer();
             window.setTimeout(() => {
                 updateAuthButton();
                 renderSignedOutStates();
@@ -775,7 +594,7 @@ async function checkIfUserIsLoggedIn() {
 // Data loading
 // ---------------------------------------------------------------------------
 
-async function loadCategories(cache = state.cache) {
+async function loadCategories() {
     const { data, error } = await supabase
         .from(CONFIG.tables.habitCategories)
         .select('id, category_name');
@@ -785,15 +604,13 @@ async function loadCategories(cache = state.cache) {
         return;
     }
 
-    if (state.cache !== cache || state.currentUser?.id !== cache.userId) return;
-
     state.categories = {};
     (data || []).forEach(row => {
         state.categories[row.id] = row.category_name;
     });
 }
 
-async function loadAllHabits(cache = state.cache) {
+async function loadAllHabits() {
     const { data, error } = await supabase
         .from(CONFIG.tables.habits)
         .select('id, name, category, default_points');
@@ -802,8 +619,6 @@ async function loadAllHabits(cache = state.cache) {
         console.error('Error fetching habits:', error);
         return;
     }
-
-    if (state.cache !== cache || state.currentUser?.id !== cache.userId) return;
 
     state.habits = data || [];
 }
@@ -876,12 +691,10 @@ async function selectDate(key) {
 
     if (!state.currentUser) return;
 
-    clearActiveViewCache();
-    showDateLoadingStates();
     document.getElementById('logged_points_list').setAttribute('aria-busy', 'true');
     document.getElementById('month_summary').setAttribute('aria-busy', 'true');
     document.getElementById('top_habits_list').setAttribute('aria-busy', 'true');
-    await refreshAllData({ dateKey: key, background: true });
+    await refreshAllData();
 }
 
 // ---------------------------------------------------------------------------
@@ -1127,15 +940,12 @@ async function onRecordHabitClicked() {
     }
 
     const quantity = getHabitQuantity();
-    const logDate = state.selectedDate;
-    const cache = state.cache;
-    const userId = state.currentUser?.id;
     setComposerBusy(true, quantity);
 
     try {
         // Always log to the selected date so past days can be backfilled.
         const logEntries = Array.from({ length: quantity }, () => ({
-            date: logDate,
+            date: state.selectedDate,
             habit: habit.id
         }));
         const { data, error } = await supabase
@@ -1145,24 +955,13 @@ async function onRecordHabitClicked() {
 
         if (error) {
             console.error('Error recording habit:', error);
-            if (isCurrentUserCache(cache, userId)) {
-                showToast(`We couldn't log that habit. ${error.message}`, { type: 'error' });
-            }
+            showToast(`We couldn't log that habit. ${error.message}`, { type: 'error' });
             return;
         }
 
-        if (!isCurrentUserCache(cache, userId)) return;
-
         state.lastLogIds = (data || []).map(row => row.id).filter(id => id !== undefined && id !== null);
-        state.lastLogDate = logDate;
         setHabitQuantity(1);
-        invalidateDataForDate(logDate);
-        const activeDate = state.selectedDate;
-        await refreshAllData({
-            dateKey: activeDate,
-            background: true,
-            force: activeDate === logDate
-        });
+        await refreshAllData();
 
         const totalPoints = Number(habit.default_points) * quantity;
         const label = quantity === 1 ? habit.name : `${habit.name} ×${quantity}`;
@@ -1172,60 +971,38 @@ async function onRecordHabitClicked() {
         showToast(`${label} logged · +${totalPoints} ${totalPoints === 1 ? 'pt' : 'pts'}`, toastOptions);
     } catch (error) {
         console.error('Unexpected error:', error);
-        if (isCurrentUserCache(cache, userId)) {
-            showToast('Something unexpected happened. Please try again.', { type: 'error' });
-        }
+        showToast('Something unexpected happened. Please try again.', { type: 'error' });
     } finally {
-        if (isCurrentUserCache(cache, userId)) setComposerBusy(false, quantity);
+        setComposerBusy(false, quantity);
     }
 }
 
 async function undoLastLog() {
-    const ids = [...state.lastLogIds];
+    const ids = state.lastLogIds;
     if (!ids.length) return;
-    const logDate = state.lastLogDate;
-    const cache = state.cache;
-    const userId = state.currentUser?.id;
     state.lastLogIds = [];
-    state.lastLogDate = null;
 
     const { error } = await supabase
         .from(CONFIG.tables.habitLog)
         .delete()
         .in('id', ids);
 
-    if (!isCurrentUserCache(cache, userId)) return;
-
     if (error) {
-        state.lastLogIds = ids;
-        state.lastLogDate = logDate;
         console.error('Error undoing log:', error);
         showToast(`We couldn't undo that entry. ${error.message}`, { type: 'error' });
         return;
     }
 
-    if (logDate) {
-        invalidateDataForDate(logDate);
-        const activeDate = state.selectedDate;
-        await refreshAllData({
-            dateKey: activeDate,
-            background: true,
-            force: activeDate === logDate
-        });
-    }
+    await refreshAllData();
     showToast('Entry removed.');
 }
 
 /** Remove a single logged entry from the selected day's activity list. */
-async function deleteLogEntry(entryId, habitName, points, dateKey) {
-    const cache = state.cache;
-    const userId = state.currentUser?.id;
+async function deleteLogEntry(entryId, habitName, points) {
     const { error } = await supabase
         .from(CONFIG.tables.habitLog)
         .delete()
         .eq('id', entryId);
-
-    if (!isCurrentUserCache(cache, userId)) return;
 
     if (error) {
         console.error('Error deleting entry:', error);
@@ -1235,14 +1012,7 @@ async function deleteLogEntry(entryId, habitName, points, dateKey) {
 
     // Keep Undo honest if this entry was part of the last logged batch.
     state.lastLogIds = state.lastLogIds.filter(id => id !== entryId);
-    if (!state.lastLogIds.length) state.lastLogDate = null;
-    invalidateDataForDate(dateKey);
-    const activeDate = state.selectedDate;
-    await refreshAllData({
-        dateKey: activeDate,
-        background: true,
-        force: activeDate === dateKey
-    });
+    await refreshAllData();
     showToast(`${habitName} entry removed · −${points} ${points === 1 ? 'pt' : 'pts'}`);
 }
 
@@ -1250,217 +1020,33 @@ async function deleteLogEntry(entryId, habitName, points, dateKey) {
 // Day view: stats, activity list, category chart
 // ---------------------------------------------------------------------------
 
-function isCurrentUserCache(cache, userId = cache.userId) {
-    return state.cache === cache
-        && cache.userId === userId
-        && state.currentUser?.id === userId;
-}
-
-function isActiveDataRequest(dateKey, cache, cacheVersion) {
-    return isCurrentUserCache(cache)
-        && state.selectedDate === dateKey
-        && cache.version === cacheVersion;
-}
-
-function cachedMonthRows(dateKey) {
-    return state.cache.monthRowsByKey.get(monthCacheKey(dateKey))?.rows || null;
-}
-
-function cachedDayRows(dateKey) {
-    const rows = cachedMonthRows(dateKey);
-    return rows ? rows.filter(row => row.date === dateKey) : null;
-}
-
-function invalidateDataForDate(dateKey) {
-    const cache = state.cache;
-    cache.version += 1;
-    cache.monthRowsByKey.delete(monthCacheKey(dateKey));
-    cache.monthPointRowsByKey.delete(monthCacheKey(dateKey));
-    cache.streakWindow = null;
-    cache.streakLoadPromise = null;
-    cache.streakComplete = false;
-
-    if (state.selectedDate === dateKey) {
-        cache.dayRows = null;
-        cache.dayKey = null;
-        cache.monthRows = null;
-        cache.monthKey = null;
-        cache.prevMonthPoints = null;
-        cache.streakRows = null;
-        cache.streakKey = null;
-        cache.streakComplete = false;
-    }
-}
-
-function clearActiveViewCache() {
-    const cache = state.cache;
-    cache.dayRows = null;
-    cache.dayKey = null;
-    cache.monthRows = null;
-    cache.monthKey = null;
-    cache.prevMonthPoints = null;
-    cache.streakRows = null;
-    cache.streakKey = null;
-    cache.streakComplete = false;
-
-    Object.keys(charts).forEach(key => {
-        charts[key]?.destroy();
-        charts[key] = null;
-    });
-}
-
-function showDateLoadingStates() {
-    setContainerMessage(document.getElementById('logged_points_list'), "Loading the day's activity…");
-    setContainerMessage(document.getElementById('month_summary'), 'Loading monthly progress…');
-    setContainerMessage(document.getElementById('top_habits_list'), 'Loading top habits…');
-    document.getElementById('total_points_badge').textContent = '—';
-    ['stat_points', 'stat_entries', 'stat_categories', 'stat_streak'].forEach(id => {
-        document.getElementById(id).textContent = '—';
-    });
-}
-
-async function fetchAllHabitLogPages(createQuery) {
-    const rows = [];
-
-    for (let offset = 0; ; offset += LOG_QUERY_PAGE_SIZE) {
-        const { data, error } = await createQuery()
-            .range(offset, offset + LOG_QUERY_PAGE_SIZE - 1);
-        if (error) throw error;
-
-        const page = data || [];
-        rows.push(...page);
-        if (page.length < LOG_QUERY_PAGE_SIZE) return rows;
-    }
-}
-
-async function getCalendarMonthRows(dateKey, { force = false } = {}) {
-    const cache = state.cache;
-    const key = monthCacheKey(dateKey);
-    const cached = cache.monthRowsByKey.get(key);
-    if (!force && cached?.rows) return cached.rows;
-    if (!force && cached?.promise) return cached.promise;
-
-    const userId = cache.userId;
-    const entry = { rows: null, promise: null };
-    entry.promise = fetchAllHabitLogPages(() => supabase
+async function refreshDay() {
+    const list = document.getElementById('logged_points_list');
+    const { data, error } = await supabase
         .from(CONFIG.tables.habitLog)
         .select(`
             id,
             date,
-            habit,
             habits (
                 name,
                 default_points,
                 category
             )
         `)
-        .gte('date', monthStartKey(dateKey))
-        .lte('date', monthEndKey(dateKey))
-        .order('date', { ascending: true })
-        .order('id', { ascending: true }))
-        .then(rows => {
-            if (state.cache === cache
-                && cache.userId === userId
-                && cache.monthRowsByKey.get(key) === entry) {
-                entry.rows = rows;
-            }
-            return rows;
-        })
-        .catch(error => {
-            if (state.cache === cache && cache.monthRowsByKey.get(key) === entry) {
-                cache.monthRowsByKey.delete(key);
-            }
-            throw error;
-        });
+        .eq('date', state.selectedDate);
 
-    cache.monthRowsByKey.set(key, entry);
-    return entry.promise;
-}
-
-async function getCalendarMonthPointRows(dateKey) {
-    const cache = state.cache;
-    const key = monthCacheKey(dateKey);
-    const cached = cache.monthPointRowsByKey.get(key);
-    if (cached?.rows) return cached.rows;
-    if (cached?.promise) return cached.promise;
-
-    const userId = cache.userId;
-    const entry = { rows: null, promise: null };
-    entry.promise = fetchAllHabitLogPages(() => supabase
-        .from(CONFIG.tables.habitLog)
-        .select('date, habits ( default_points )')
-        .gte('date', monthStartKey(dateKey))
-        .lte('date', monthEndKey(dateKey))
-        .order('date', { ascending: true })
-        .order('id', { ascending: true }))
-        .then(rows => {
-            if (state.cache === cache
-                && cache.userId === userId
-                && cache.monthPointRowsByKey.get(key) === entry) {
-                entry.rows = rows;
-            }
-            return rows;
-        })
-        .catch(error => {
-            if (state.cache === cache && cache.monthPointRowsByKey.get(key) === entry) {
-                cache.monthPointRowsByKey.delete(key);
-            }
-            throw error;
-        });
-
-    cache.monthPointRowsByKey.set(key, entry);
-    return entry.promise;
-}
-
-async function refreshDay(dateKey = state.selectedDate, { force = false } = {}) {
-    const cache = state.cache;
-    const cacheVersion = cache.version;
-    const list = document.getElementById('logged_points_list');
-    const rowsFromMonthCache = force ? null : cachedDayRows(dateKey);
-
-    if (rowsFromMonthCache) {
-        if (isActiveDataRequest(dateKey, cache, cacheVersion)) {
-            cache.dayRows = rowsFromMonthCache;
-            cache.dayKey = dateKey;
-            renderDay();
-        }
-        return rowsFromMonthCache;
-    }
-
-    let rows;
-    try {
-        rows = await fetchAllHabitLogPages(() => supabase
-            .from(CONFIG.tables.habitLog)
-            .select(`
-                id,
-                date,
-                habits (
-                    name,
-                    default_points,
-                    category
-                )
-            `)
-            .eq('date', dateKey)
-            .order('id', { ascending: true }));
-    } catch (error) {
+    if (error) {
         console.error('Error fetching data:', error);
-        if (isActiveDataRequest(dateKey, cache, cacheVersion)) {
-            setContainerMessage(list, `We couldn't load this day's activity. ${error.message}`, 'error');
-        }
-        return null;
+        setContainerMessage(list, `We couldn't load this day's activity. ${error.message}`, 'error');
+        return;
     }
 
-    if (isActiveDataRequest(dateKey, cache, cacheVersion)) {
-        cache.dayRows = rows;
-        cache.dayKey = dateKey;
-        renderDay();
-    }
-    return rows;
+    state.cache.dayRows = data || [];
+    renderDay();
 }
 
 function renderDay() {
     const rows = state.cache.dayRows || [];
-    const renderedDateKey = state.selectedDate;
     const list = document.getElementById('logged_points_list');
     const badge = document.getElementById('total_points_badge');
 
@@ -1536,12 +1122,7 @@ function renderDay() {
                             removeButton.textContent = '×';
                             removeButton.setAttribute('aria-label', `Remove one ${habitName} entry from this day`);
                             removeButton.addEventListener('click', () => {
-                                deleteLogEntry(
-                                    habitData.ids[habitData.ids.length - 1],
-                                    habitName,
-                                    habitData.pointsPerEntry,
-                                    renderedDateKey
-                                );
+                                deleteLogEntry(habitData.ids[habitData.ids.length - 1], habitName, habitData.pointsPerEntry);
                             });
                             habitItem.appendChild(removeButton);
                         }
@@ -1582,39 +1163,49 @@ function previousMonthRange(key) {
     return { start: dateToKey(start), end: dateToKey(end) };
 }
 
-async function refreshMonth(dateKey = state.selectedDate, { force = false } = {}) {
+async function refreshMonth() {
     const summary = document.getElementById('month_summary');
-    const prevRange = previousMonthRange(dateKey);
-    const cache = state.cache;
-    const cacheVersion = cache.version;
-    const [monthResult, prevResult] = await Promise.allSettled([
-        getCalendarMonthRows(dateKey, { force }),
-        getCalendarMonthPointRows(prevRange.start)
+    const startDate = monthStartKey(state.selectedDate);
+    const prevRange = previousMonthRange(state.selectedDate);
+
+    const [monthResult, prevResult] = await Promise.all([
+        supabase
+            .from(CONFIG.tables.habitLog)
+            .select(`
+                date,
+                habit,
+                habits (
+                    name,
+                    default_points,
+                    category
+                )
+            `)
+            .gte('date', startDate)
+            .lte('date', state.selectedDate),
+        supabase
+            .from(CONFIG.tables.habitLog)
+            .select('habits ( default_points )')
+            .gte('date', prevRange.start)
+            .lte('date', prevRange.end)
     ]);
 
-    if (!isActiveDataRequest(dateKey, cache, cacheVersion)) return;
-
-    if (monthResult.status === 'rejected') {
-        console.error('Error fetching progress data:', monthResult.reason);
-        setContainerMessage(summary, `We couldn't load monthly progress. ${monthResult.reason.message}`, 'error');
-        setContainerMessage(document.getElementById('top_habits_list'), `We couldn't load your top habits. ${monthResult.reason.message}`, 'error');
+    if (monthResult.error) {
+        console.error('Error fetching progress data:', monthResult.error);
+        setContainerMessage(summary, `We couldn't load monthly progress. ${monthResult.error.message}`, 'error');
+        setContainerMessage(document.getElementById('top_habits_list'), `We couldn't load your top habits. ${monthResult.error.message}`, 'error');
         return;
     }
 
-    const rows = monthResult.value.filter(row => row.date <= dateKey);
-    cache.monthRows = rows;
-    cache.monthKey = dateKey;
-
     // The comparison is decorative; a failure here shouldn't block the view.
-    if (prevResult.status === 'rejected') {
-        console.error('Error fetching previous month data:', prevResult.reason);
-        cache.prevMonthPoints = null;
+    if (prevResult.error) {
+        console.error('Error fetching previous month data:', prevResult.error);
+        state.cache.prevMonthPoints = null;
     } else {
-        cache.prevMonthPoints = prevResult.value
-            .filter(row => row.date <= prevRange.end)
+        state.cache.prevMonthPoints = (prevResult.data || [])
             .reduce((sum, row) => sum + row.habits.default_points, 0);
     }
 
+    state.cache.monthRows = monthResult.data || [];
     renderMonth();
 }
 
@@ -1760,114 +1351,26 @@ function renderTopHabits(rows) {
 // Streaks (daily logging streak + per-habit streaks)
 // ---------------------------------------------------------------------------
 
-function streakWindowCovers(window, startDate, endDate) {
-    return window && window.start <= startDate && window.end >= endDate;
-}
-
-async function fetchStreakRows(startDate, endDate) {
+async function refreshStreaks() {
+    const startDate = addDays(state.selectedDate, -STREAK_WINDOW_DAYS);
     const { data, error } = await supabase
         .from(CONFIG.tables.habitLog)
         .select('date, habit')
         .gte('date', startDate)
-        .lte('date', endDate)
+        .lte('date', state.selectedDate)
         .order('date', { ascending: false })
-        .order('id', { ascending: false })
-        .limit(STREAK_QUERY_ROW_LIMIT);
+        .limit(1000);
 
-    if (error) throw error;
-    const rows = data || [];
-    return {
-        rows,
-        // A response that exactly fills the cap may be truncated. Treat it as
-        // incomplete so we never present a shorter streak as a real one.
-        complete: rows.length < STREAK_QUERY_ROW_LIMIT
-    };
-}
-
-async function getStreakWindowRows(startDate, endDate, { force = false } = {}) {
-    const cache = state.cache;
-    if (force) cache.streakWindow = null;
-    if (streakWindowCovers(cache.streakWindow, startDate, endDate)) {
-        return { rows: cache.streakWindow.rows, complete: true };
-    }
-
-    // A quick succession of date changes shares one load, then checks whether
-    // its own requested window is covered before issuing another query.
-    if (cache.streakLoadPromise) {
-        await cache.streakLoadPromise;
-        return getStreakWindowRows(startDate, endDate, { force: false });
-    }
-
-    const cacheVersion = cache.version;
-    const userId = cache.userId;
-    const existingWindow = cache.streakWindow;
-    const ranges = [];
-
-    if (!existingWindow) {
-        ranges.push({ start: startDate, end: endDate });
-    } else {
-        if (startDate < existingWindow.start) {
-            ranges.push({ start: startDate, end: addDays(existingWindow.start, -1) });
-        }
-        if (endDate > existingWindow.end) {
-            ranges.push({ start: addDays(existingWindow.end, 1), end: endDate });
-        }
-    }
-
-    const loadPromise = Promise.all(ranges.map(range => fetchStreakRows(range.start, range.end)))
-        .then(results => {
-            const rows = (existingWindow?.rows || []).concat(...results.map(result => result.rows))
-                .sort((a, b) => b.date.localeCompare(a.date));
-            const complete = results.every(result => result.complete);
-
-            if (complete
-                && state.cache === cache
-                && cache.userId === userId
-                && cache.version === cacheVersion) {
-                cache.streakWindow = {
-                    start: existingWindow ? (startDate < existingWindow.start ? startDate : existingWindow.start) : startDate,
-                    end: existingWindow ? (endDate > existingWindow.end ? endDate : existingWindow.end) : endDate,
-                    rows
-                };
-            }
-            return { rows, complete };
-        });
-
-    cache.streakLoadPromise = loadPromise;
-    try {
-        return await loadPromise;
-    } finally {
-        if (state.cache.streakLoadPromise === loadPromise) {
-            state.cache.streakLoadPromise = null;
-        }
-    }
-}
-
-async function refreshStreaks(dateKey = state.selectedDate, { force = false } = {}) {
-    const cache = state.cache;
-    const cacheVersion = cache.version;
-    const startDate = addDays(dateKey, -STREAK_WINDOW_DAYS);
-    const bufferedStart = addDays(startDate, -STREAK_CACHE_BUFFER_DAYS);
-    const bufferedEnd = addDays(dateKey, STREAK_CACHE_BUFFER_DAYS);
-
-    try {
-        const streakResult = await getStreakWindowRows(bufferedStart, bufferedEnd, { force });
-        if (!isActiveDataRequest(dateKey, cache, cacheVersion)) return;
-
-        cache.streakRows = streakResult.rows.filter(row => row.date >= startDate && row.date <= dateKey);
-        cache.streakKey = dateKey;
-        cache.streakComplete = streakResult.complete;
-        renderStreaks();
-    } catch (error) {
+    if (error) {
         // Streaks are supplementary; leave the tile blank rather than failing.
         console.error('Error fetching streak data:', error);
-        if (isActiveDataRequest(dateKey, cache, cacheVersion)) {
-            cache.streakRows = null;
-            cache.streakKey = dateKey;
-            cache.streakComplete = false;
-            renderStreaks();
-        }
+        state.cache.streakRows = null;
+        renderStreaks();
+        return;
     }
+
+    state.cache.streakRows = data || [];
+    renderStreaks();
 }
 
 /**
@@ -1877,7 +1380,7 @@ async function refreshStreaks(dateKey = state.selectedDate, { force = false } = 
  */
 function getStreakData() {
     const rows = state.cache.streakRows;
-    if (!rows || !state.cache.streakComplete || state.cache.streakKey !== state.selectedDate) return null;
+    if (!rows) return null;
 
     const allDates = new Set();
     const datesByHabit = new Map();
@@ -1914,9 +1417,7 @@ function renderStreaks() {
 
     // Per-habit streaks live on the Most Consistent list; re-render it now
     // that streak data is available (order-independent with refreshMonth).
-    if (state.cache.monthRows && state.cache.monthKey === state.selectedDate) {
-        renderTopHabits(state.cache.monthRows);
-    }
+    if (state.cache.monthRows) renderTopHabits(state.cache.monthRows);
 }
 
 // ---------------------------------------------------------------------------
@@ -1963,7 +1464,7 @@ function sizeCategoryChart(canvas, categoryCount, isCompact) {
  */
 function renderCategoryBarChart(chartKey, canvasId, descriptionId, categoryPoints) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined' || typeof ChartDataLabels === 'undefined') return;
+    if (!canvas || typeof Chart === 'undefined') return;
 
     const entries = Object.keys(state.categories)
         .map(categoryId => [categoryId, categoryPoints[categoryId] || 0])
@@ -2064,7 +1565,7 @@ function renderCategoryBarChart(chartKey, canvasId, descriptionId, categoryPoint
  */
 function renderTrendChart(dailyPoints) {
     const canvas = document.getElementById('trend_chart');
-    if (!canvas || typeof Chart === 'undefined' || typeof ChartDataLabels === 'undefined') return;
+    if (!canvas || typeof Chart === 'undefined') return;
 
     const chrome = chartChrome();
     const labels = dailyPoints.map((_, index) => String(index + 1));
@@ -2149,9 +1650,9 @@ function rerenderFromCache() {
     if (!state.currentUser) return;
     renderCategoryChips();
     renderHabitGrid();
-    if (state.cache.dayRows && state.cache.dayKey === state.selectedDate) renderDay();
-    if (state.cache.monthRows && state.cache.monthKey === state.selectedDate) renderMonth();
-    if (state.cache.streakRows && state.cache.streakKey === state.selectedDate) renderStreaks();
+    if (state.cache.dayRows) renderDay();
+    if (state.cache.monthRows) renderMonth();
+    if (state.cache.streakRows) renderStreaks();
 }
 
 // ---------------------------------------------------------------------------
@@ -2205,10 +1706,6 @@ function bindStaticEvents() {
     bindStaticEvents();
     renderWeekStrip();
     updateDayContext();
-
-    // Start the module request while the shell/config work runs. Initialization
-    // still awaits it below so CDN failures keep the existing friendly state.
-    void preloadSupabaseModule().catch(() => {});
 
     if (!(await initializeConfig())) {
         renderFatalState('Configuration required', 'Refresh the page when you are ready to finish setting up your habit tracker.');
